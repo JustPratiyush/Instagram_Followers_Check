@@ -3,7 +3,7 @@
  * Talks to the content script via window.postMessage.
  */
 (function () {
-  var BRIDGE_VERSION = "1.1.0";
+  var BRIDGE_VERSION = "1.2.0";
   var SOURCE = "ig-follow-check-bridge";
   var APP_ID = "936619743392459";
 
