@@ -492,11 +492,12 @@
         return;
       }
 
+      // Only update local lists after Instagram confirmed the change.
       applyFriendshipLocally(data.action, data.userId, data.username);
       state.status =
         data.action === "destroy"
-          ? "Removed @" + data.username
-          : "Followed @" + data.username;
+          ? "Removed @" + data.username + " on Instagram"
+          : "Followed @" + data.username + " on Instagram";
       persistResult();
       renderAll();
       return;
