@@ -3,7 +3,7 @@
  * Talks to the content script via window.postMessage.
  */
 (function () {
-  var BRIDGE_VERSION = "1.2.0";
+  var BRIDGE_VERSION = "1.3.2";
   var SOURCE = "ig-follow-check-bridge";
   var APP_ID = "936619743392459";
 
@@ -123,6 +123,54 @@
       body: "",
     });
     return data;
+  }
+
+  function extractCounts(user) {
+    if (!user) return null;
+    var followers =
+      user.follower_count != null
+        ? user.follower_count
+        : user.edge_followed_by && user.edge_followed_by.count != null
+          ? user.edge_followed_by.count
+          : null;
+    var following =
+      user.following_count != null
+        ? user.following_count
+        : user.edge_follow && user.edge_follow.count != null
+          ? user.edge_follow.count
+          : null;
+    if (followers == null && following == null) return null;
+    return {
+      follower_count: followers == null ? null : Number(followers),
+      following_count: following == null ? null : Number(following),
+      is_verified:
+        user.is_verified != null ? Boolean(user.is_verified) : undefined,
+    };
+  }
+
+  async function fetchUserCounts(userId, username) {
+    if (userId) {
+      try {
+        var info = await igFetch(
+          "https://www.instagram.com/api/v1/users/" + userId + "/info/"
+        );
+        var fromInfo = extractCounts(info && info.user);
+        if (fromInfo) return fromInfo;
+      } catch (_) {}
+    }
+
+    if (username) {
+      var profile = await igFetch(
+        "https://www.instagram.com/api/v1/users/web_profile_info/?username=" +
+          encodeURIComponent(username)
+      );
+      var fromProfile = extractCounts(
+        profile && profile.data && profile.data.user
+      );
+      if (fromProfile) return fromProfile;
+    }
+
+    throw new Error("Could not load counts for @" + (username || userId));
   }
 
   async function resolveViewer() {
@@ -349,6 +397,33 @@
             requestId: data.requestId,
             ok: false,
             action: data.action,
+            userId: data.userId,
+            username: data.username,
+            message: (err && err.message) || String(err),
+          });
+        });
+      return;
+    }
+
+    if (data.type === "userCounts") {
+      fetchUserCounts(data.userId, data.username)
+        .then(function (counts) {
+          post({
+            type: "userCountsResult",
+            requestId: data.requestId,
+            ok: true,
+            userId: data.userId,
+            username: data.username,
+            follower_count: counts.follower_count,
+            following_count: counts.following_count,
+            is_verified: counts.is_verified,
+          });
+        })
+        .catch(function (err) {
+          post({
+            type: "userCountsResult",
+            requestId: data.requestId,
+            ok: false,
             userId: data.userId,
             username: data.username,
             message: (err && err.message) || String(err),

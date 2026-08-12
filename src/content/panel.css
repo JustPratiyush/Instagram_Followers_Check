@@ -276,6 +276,48 @@
   padding: 12px 20px 0;
 }
 
+.igfc-counts-progress {
+  padding: 8px 20px 0;
+}
+
+.igfc-counts-progress-meta {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.igfc-counts-progress-label {
+  color: var(--igfc-muted);
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
+
+.igfc-counts-progress-track {
+  height: 2px;
+  width: 100%;
+  background: #222;
+  overflow: hidden;
+}
+
+.igfc-counts-progress-bar {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: #6b6b6b;
+  transition: width 0.2s ease;
+  position: relative;
+}
+
+.igfc-counts-progress-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0.2;
+  transform: translateX(-100%);
+  animation: igfc-shimmer 1.1s ease-in-out infinite;
+}
+
 .igfc-search {
   width: 100%;
   border: 1px solid var(--igfc-border);
@@ -437,6 +479,14 @@
 .igfc-table td.igfc-col-num {
   width: 40px;
   color: var(--igfc-muted);
+}
+
+.igfc-table th.igfc-col-count,
+.igfc-table td.igfc-col-count {
+  width: 88px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--igfc-text);
 }
 
 .igfc-user {

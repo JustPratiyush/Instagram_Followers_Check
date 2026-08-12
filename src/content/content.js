@@ -10,7 +10,7 @@
     requestId: 0,
     actionRequestId: 0,
     activeTab: "notFollowingBack",
-    notFollowingFilter: "all",
+    verifiedFilter: "all",
     query: "",
     viewer: null,
     followers: [],
@@ -23,10 +23,16 @@
     followersLoaded: 0,
     followingLoaded: 0,
     progressPct: 0,
+    detailsRequestId: 0,
   };
 
   var avatarCache = {};
   var avatarInflight = {};
+  var DETAILS_WORKERS = 16;
+  var detailsCache = {};
+  var detailsQueue = [];
+  var detailsQueued = {};
+  var detailsInFlight = 0;
 
   function compareLists(followers, following) {
     var followerMap = {};
@@ -63,29 +69,197 @@
     notFollowingBack.sort(byName);
     notFollowedBack.sort(byName);
 
-    var notFollowingVerified = notFollowingBack.filter(function (u) {
-      return Boolean(u.is_verified);
-    });
-    var notFollowingUnverified = notFollowingBack.filter(function (u) {
-      return !u.is_verified;
-    });
-
     return {
       mutual: mutual,
       notFollowingBack: notFollowingBack,
-      notFollowingVerified: notFollowingVerified,
-      notFollowingUnverified: notFollowingUnverified,
       notFollowedBack: notFollowedBack,
       counts: {
         followers: followers.length,
         following: following.length,
         mutual: mutual.length,
         notFollowingBack: notFollowingBack.length,
-        notFollowingVerified: notFollowingVerified.length,
-        notFollowingUnverified: notFollowingUnverified.length,
         notFollowedBack: notFollowedBack.length,
       },
     };
+  }
+
+  function formatCount(n) {
+    if (n == null || isNaN(n)) return "—";
+    var num = Number(n);
+    if (num < 1000) return String(num);
+    if (num < 10000) return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
+    if (num < 1000000) return Math.round(num / 1000) + "K";
+    return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+  }
+
+  function activeBaseList() {
+    if (!state.comparison) return [];
+    if (state.activeTab === "followers") return state.followers;
+    if (state.activeTab === "following") return state.following;
+    return state.comparison[state.activeTab] || [];
+  }
+
+  function filteredByVerified(list) {
+    if (state.verifiedFilter === "verified") {
+      return list.filter(function (u) {
+        return Boolean(u.is_verified);
+      });
+    }
+    if (state.verifiedFilter === "unverified") {
+      return list.filter(function (u) {
+        return !u.is_verified;
+      });
+    }
+    return list;
+  }
+
+  function getVisibleList() {
+    var list = filteredByVerified(activeBaseList());
+    if (!state.query) return list;
+    return list.filter(function (u) {
+      return (
+        u.username.toLowerCase().indexOf(state.query) !== -1 ||
+        (u.full_name || "").toLowerCase().indexOf(state.query) !== -1
+      );
+    });
+  }
+
+  function applyDetailsToUser(user, details) {
+    if (!user || !details) return;
+    if (details.follower_count != null) user.follower_count = details.follower_count;
+    if (details.following_count != null) {
+      user.following_count = details.following_count;
+    }
+    if (details.is_verified != null) user.is_verified = details.is_verified;
+  }
+
+  function patchCountCells(userId, details) {
+    var nodes = document.querySelectorAll(
+      '#igfc-root [data-igfc-pk="' + userId + '"]'
+    );
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      var kind = node.getAttribute("data-igfc-kind");
+      if (kind === "followers") {
+        node.textContent = formatCount(details.follower_count);
+      } else if (kind === "following") {
+        node.textContent = formatCount(details.following_count);
+      }
+    }
+  }
+
+  function enqueueUserDetails(list) {
+    if (!list || !list.length) return;
+    for (var i = 0; i < list.length; i++) {
+      var user = list[i];
+      var key = String(user.pk || "");
+      if (!key) continue;
+      if (detailsCache[key] && detailsCache[key].ok) {
+        applyDetailsToUser(user, detailsCache[key]);
+        continue;
+      }
+      if (detailsQueued[key] || (detailsCache[key] && detailsCache[key].loading)) {
+        continue;
+      }
+      detailsQueued[key] = true;
+      detailsCache[key] = { loading: true };
+      detailsQueue.push({
+        userId: key,
+        username: user.username,
+      });
+    }
+    pumpDetailsQueue();
+    renderDetailsProgress();
+  }
+
+  function getDetailsProgress(list) {
+    list = list || (hasResults() && !state.scanning ? getVisibleList() : []);
+    var total = list.length;
+    var done = 0;
+    for (var i = 0; i < list.length; i++) {
+      var cached = detailsCache[String(list[i].pk || "")];
+      if (cached && !cached.loading && cached.ok != null) done += 1;
+    }
+    var active = detailsInFlight > 0 || detailsQueue.length > 0;
+    return {
+      total: total,
+      done: done,
+      active: active && done < total,
+      pct: total ? Math.round((done / total) * 100) : 0,
+    };
+  }
+
+  function renderDetailsProgress() {
+    if (!refs.countsProgress) return;
+    var ready = hasResults() && !state.scanning;
+    if (!ready) {
+      refs.countsProgress.classList.add("igfc-hidden");
+      return;
+    }
+
+    var progress = getDetailsProgress();
+    if (!progress.active && progress.done >= progress.total) {
+      refs.countsProgress.classList.add("igfc-hidden");
+      return;
+    }
+
+    refs.countsProgress.classList.remove("igfc-hidden");
+    refs.countsProgressBar.style.width = Math.max(4, progress.pct) + "%";
+    refs.countsProgressLabel.textContent =
+      "Loading counts " + progress.done + "/" + progress.total;
+  }
+
+  function pumpDetailsQueue() {
+    injectBridge();
+    while (detailsInFlight < DETAILS_WORKERS && detailsQueue.length > 0) {
+      var next = detailsQueue.shift();
+      if (!next) break;
+      detailsInFlight += 1;
+      state.detailsRequestId += 1;
+      postToBridge({
+        type: "userCounts",
+        requestId: state.detailsRequestId,
+        userId: next.userId,
+        username: next.username,
+      });
+    }
+  }
+
+  function onUserCountsResult(data) {
+    var key = String(data.userId || "");
+    delete detailsQueued[key];
+    detailsInFlight = Math.max(0, detailsInFlight - 1);
+
+    if (!data.ok) {
+      detailsCache[key] = { ok: false, loading: false };
+      var failNodes = document.querySelectorAll(
+        '#igfc-root [data-igfc-pk="' + key + '"]'
+      );
+      for (var i = 0; i < failNodes.length; i++) {
+        failNodes[i].textContent = "—";
+      }
+    } else {
+      var details = {
+        ok: true,
+        loading: false,
+        follower_count: data.follower_count,
+        following_count: data.following_count,
+        is_verified: data.is_verified,
+      };
+      detailsCache[key] = details;
+
+      function touch(list) {
+        for (var j = 0; j < list.length; j++) {
+          if (String(list[j].pk) === key) applyDetailsToUser(list[j], details);
+        }
+      }
+      touch(state.followers);
+      touch(state.following);
+      patchCountCells(key, details);
+    }
+
+    renderDetailsProgress();
+    pumpDetailsQueue();
   }
 
   function injectBridge() {
@@ -189,6 +363,18 @@
     });
     searchRow.appendChild(search);
 
+    var countsProgress = el("div", "igfc-counts-progress igfc-hidden");
+    var countsProgressMeta = el("div", "igfc-counts-progress-meta");
+    var countsProgressLabel = el("span", "igfc-counts-progress-label", {
+      text: "Loading counts…",
+    });
+    countsProgressMeta.appendChild(countsProgressLabel);
+    var countsProgressTrack = el("div", "igfc-counts-progress-track");
+    var countsProgressBar = el("i", "igfc-counts-progress-bar");
+    countsProgressTrack.appendChild(countsProgressBar);
+    countsProgress.appendChild(countsProgressMeta);
+    countsProgress.appendChild(countsProgressTrack);
+
     var body = el("div", "igfc-body");
 
     panel.appendChild(header);
@@ -196,6 +382,7 @@
     panel.appendChild(stats);
     panel.appendChild(subfilters);
     panel.appendChild(searchRow);
+    panel.appendChild(countsProgress);
     panel.appendChild(body);
 
     root.appendChild(fab);
@@ -217,6 +404,9 @@
       subfilters: subfilters,
       searchRow: searchRow,
       search: search,
+      countsProgress: countsProgress,
+      countsProgressBar: countsProgressBar,
+      countsProgressLabel: countsProgressLabel,
       body: body,
     };
 
@@ -274,6 +464,11 @@
     if (!data || data.source !== BRIDGE_SOURCE) return;
 
     if (data.type === "ready") {
+      return;
+    }
+
+    if (data.type === "userCountsResult") {
+      onUserCountsResult(data);
       return;
     }
 
@@ -466,6 +661,7 @@
     refs.stats.classList.toggle("igfc-hidden", !ready);
     refs.searchRow.classList.toggle("igfc-hidden", !ready);
     renderSubfilters();
+    renderDetailsProgress();
     refs.scanBtn.disabled = state.scanning;
     refs.exportBtn.disabled = !ready;
     refs.scanBtn.textContent = state.scanning ? "Scanning…" : "Scan my lists";
@@ -508,7 +704,6 @@
       card.appendChild(el("strong", null, { text: String(item[2]) }));
       card.addEventListener("click", function () {
         state.activeTab = item[0];
-        if (item[0] !== "notFollowingBack") state.notFollowingFilter = "all";
         renderStats();
         renderSubfilters();
         renderTable();
@@ -518,19 +713,25 @@
   }
 
   function renderSubfilters() {
-    var show =
-      hasResults() && state.activeTab === "notFollowingBack" && !state.scanning;
+    var show = hasResults() && !state.scanning;
     refs.subfilters.classList.toggle("igfc-hidden", !show);
     if (!show) {
       refs.subfilters.innerHTML = "";
       return;
     }
 
-    var counts = state.comparison.counts;
+    var base = activeBaseList();
+    var verifiedCount = 0;
+    var unverifiedCount = 0;
+    for (var i = 0; i < base.length; i++) {
+      if (base[i].is_verified) verifiedCount += 1;
+      else unverifiedCount += 1;
+    }
+
     var items = [
-      ["all", "All", counts.notFollowingBack],
-      ["verified", "Verified", counts.notFollowingVerified],
-      ["unverified", "Not verified", counts.notFollowingUnverified],
+      ["all", "All", base.length],
+      ["verified", "Verified", verifiedCount],
+      ["unverified", "Not verified", unverifiedCount],
     ];
 
     refs.subfilters.innerHTML = "";
@@ -543,11 +744,11 @@
         type: "button",
         text: item[1] + " (" + item[2] + ")",
       });
-      if (state.notFollowingFilter === item[0]) {
+      if (state.verifiedFilter === item[0]) {
         btn.classList.add("igfc-active");
       }
       btn.addEventListener("click", function () {
-        state.notFollowingFilter = item[0];
+        state.verifiedFilter = item[0];
         renderSubfilters();
         renderTable();
       });
@@ -742,29 +943,7 @@
       return;
     }
 
-    var list;
-    if (state.activeTab === "followers") list = state.followers;
-    else if (state.activeTab === "following") list = state.following;
-    else if (
-      state.activeTab === "notFollowingBack" &&
-      state.notFollowingFilter === "verified"
-    ) {
-      list = state.comparison.notFollowingVerified;
-    } else if (
-      state.activeTab === "notFollowingBack" &&
-      state.notFollowingFilter === "unverified"
-    ) {
-      list = state.comparison.notFollowingUnverified;
-    } else list = currentList();
-
-    if (state.query) {
-      list = list.filter(function (u) {
-        return (
-          u.username.toLowerCase().indexOf(state.query) !== -1 ||
-          (u.full_name || "").toLowerCase().indexOf(state.query) !== -1
-        );
-      });
-    }
+    var list = getVisibleList();
 
     if (!list.length) {
       refs.body.appendChild(
@@ -780,11 +959,14 @@
     var table = el("table", "igfc-table");
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
-    var headers = ["#", "Account", "Name"];
+    var headers = ["#", "Account", "Name", "Followers", "Following"];
     if (showActions) headers.push("Action");
     headers.forEach(function (label) {
       var th = el("th", null, { text: label });
       if (label === "#") th.className = "igfc-col-num";
+      if (label === "Followers" || label === "Following") {
+        th.className = "igfc-col-count";
+      }
       if (label === "Action") th.className = "igfc-col-action";
       headRow.appendChild(th);
     });
@@ -793,6 +975,9 @@
 
     var tbody = document.createElement("tbody");
     list.forEach(function (user, index) {
+      var cached = detailsCache[String(user.pk)] || null;
+      if (cached && cached.ok) applyDetailsToUser(user, cached);
+
       var tr = document.createElement("tr");
 
       var numTd = el("td", "igfc-col-num", { text: String(index + 1) });
@@ -825,6 +1010,30 @@
 
       tr.appendChild(el("td", null, { text: user.full_name || "—" }));
 
+      var followersTd = el("td", "igfc-col-count", {
+        text:
+          user.follower_count != null
+            ? formatCount(user.follower_count)
+            : cached && cached.ok === false
+              ? "—"
+              : "…",
+      });
+      followersTd.setAttribute("data-igfc-pk", String(user.pk || ""));
+      followersTd.setAttribute("data-igfc-kind", "followers");
+      tr.appendChild(followersTd);
+
+      var followingTd = el("td", "igfc-col-count", {
+        text:
+          user.following_count != null
+            ? formatCount(user.following_count)
+            : cached && cached.ok === false
+              ? "—"
+              : "…",
+      });
+      followingTd.setAttribute("data-igfc-pk", String(user.pk || ""));
+      followingTd.setAttribute("data-igfc-kind", "following");
+      tr.appendChild(followingTd);
+
       if (showActions) {
         var actionTd = el("td", "igfc-col-action");
         var btn = actionButtonFor(user);
@@ -836,6 +1045,9 @@
     });
     table.appendChild(tbody);
     refs.body.appendChild(table);
+
+    enqueueUserDetails(list);
+    renderDetailsProgress();
   }
 
   function renderAll() {
@@ -843,6 +1055,7 @@
     renderStats();
     renderSubfilters();
     renderTable();
+    renderDetailsProgress();
   }
 
   function csvEscape(value) {
@@ -854,29 +1067,43 @@
   function exportCsv() {
     if (!state.comparison) return;
     var rows = [
-      ["category", "username", "full_name", "verified", "profile_url"],
+      [
+        "category",
+        "username",
+        "full_name",
+        "verified",
+        "followers",
+        "following",
+        "profile_url",
+      ],
     ];
     function add(category, list) {
       list.forEach(function (u) {
+        var cached = detailsCache[String(u.pk)] || {};
         rows.push([
           category,
           u.username,
           u.full_name || "",
           u.is_verified ? "yes" : "no",
+          u.follower_count != null
+            ? u.follower_count
+            : cached.follower_count != null
+              ? cached.follower_count
+              : "",
+          u.following_count != null
+            ? u.following_count
+            : cached.following_count != null
+              ? cached.following_count
+              : "",
           "https://www.instagram.com/" + u.username + "/",
         ]);
       });
     }
     add("mutual", state.comparison.mutual);
-    add(
-      "not_following_back_verified",
-      state.comparison.notFollowingVerified
-    );
-    add(
-      "not_following_back_unverified",
-      state.comparison.notFollowingUnverified
-    );
+    add("not_following_back", state.comparison.notFollowingBack);
     add("not_followed_back", state.comparison.notFollowedBack);
+    add("followers", state.followers);
+    add("following", state.following);
 
     var csv = rows
       .map(function (row) {
