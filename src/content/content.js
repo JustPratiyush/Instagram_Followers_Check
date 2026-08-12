@@ -28,7 +28,7 @@
 
   var avatarCache = {};
   var avatarInflight = {};
-  var DETAILS_WORKERS = 16;
+  var DETAILS_WORKERS = 32;
   var detailsCache = {};
   var detailsQueue = [];
   var detailsQueued = {};
@@ -444,16 +444,21 @@
     }, 60);
   }
 
-  function estimateProgress(stage, loaded, followersCount) {
+  function estimateProgress(stage, data) {
     if (stage === "viewer") return 8;
+    if (stage === "lists") {
+      var followers = (data && data.followersLoaded) || 0;
+      var following = (data && data.followingLoaded) || 0;
+      return Math.min(
+        96,
+        12 + Math.floor(followers / 6) + Math.floor(following / 6)
+      );
+    }
     if (stage === "followers") {
-      return Math.min(48, 12 + Math.floor((loaded || 0) / 8));
+      return Math.min(48, 12 + Math.floor(((data && data.loaded) || 0) / 8));
     }
     if (stage === "following") {
-      var base = 52;
-      var fromFollowing = Math.min(42, Math.floor((loaded || 0) / 8));
-      var bonus = followersCount ? 4 : 0;
-      return Math.min(96, base + fromFollowing + bonus);
+      return Math.min(96, 52 + Math.floor(((data && data.loaded) || 0) / 8));
     }
     return state.progressPct || 10;
   }
@@ -503,10 +508,14 @@
       state.status = data.message || "Working…";
       if (data.viewer) state.viewer = data.viewer;
       if (data.stage) state.scanStage = data.stage;
-      if (data.stage === "followers" && typeof data.loaded === "number") {
+      if (typeof data.followersLoaded === "number") {
+        state.followersLoaded = data.followersLoaded;
+      } else if (data.stage === "followers" && typeof data.loaded === "number") {
         state.followersLoaded = data.loaded;
       }
-      if (data.stage === "following" && typeof data.loaded === "number") {
+      if (typeof data.followingLoaded === "number") {
+        state.followingLoaded = data.followingLoaded;
+      } else if (data.stage === "following" && typeof data.loaded === "number") {
         state.followingLoaded = data.loaded;
       }
       if (typeof data.followersCount === "number") {
@@ -514,7 +523,7 @@
       }
       state.progressPct = Math.max(
         state.progressPct,
-        estimateProgress(data.stage, data.loaded, data.followersCount)
+        estimateProgress(data.stage, data)
       );
       renderChrome();
       renderTable();
@@ -826,33 +835,53 @@
     return img;
   }
 
+  function userKey(user) {
+    return (user && user.username ? user.username : "").toLowerCase();
+  }
+
+  function isInList(list, user) {
+    var key = userKey(user);
+    if (!key) return false;
+    for (var i = 0; i < list.length; i++) {
+      if (userKey(list[i]) === key) return true;
+    }
+    return false;
+  }
+
+  function makeRemoveButton(user) {
+    var removing = state.pendingActions[String(user.pk)] === "destroy";
+    var removeBtn = el("button", "igfc-row-btn igfc-row-btn-remove", {
+      type: "button",
+      text: removing ? "Removing…" : "Remove",
+    });
+    removeBtn.disabled = removing;
+    removeBtn.addEventListener("click", function () {
+      runFriendshipAction(user, "destroy");
+    });
+    return removeBtn;
+  }
+
+  function makeFollowButton(user) {
+    var following = state.pendingActions[String(user.pk)] === "create";
+    var followBtn = el("button", "igfc-row-btn igfc-row-btn-follow", {
+      type: "button",
+      text: following ? "Following…" : "Follow back",
+    });
+    followBtn.disabled = following;
+    followBtn.addEventListener("click", function () {
+      runFriendshipAction(user, "create");
+    });
+    return followBtn;
+  }
+
   function actionButtonFor(user) {
-    if (state.activeTab === "notFollowingBack") {
-      var removing = state.pendingActions[String(user.pk)] === "destroy";
-      var removeBtn = el("button", "igfc-row-btn igfc-row-btn-remove", {
-        type: "button",
-        text: removing ? "Removing…" : "Remove",
-      });
-      removeBtn.disabled = removing;
-      removeBtn.addEventListener("click", function () {
-        runFriendshipAction(user, "destroy");
-      });
-      return removeBtn;
-    }
+    var youFollow = isInList(state.following, user);
+    var theyFollow = isInList(state.followers, user);
 
-    if (state.activeTab === "notFollowedBack") {
-      var following = state.pendingActions[String(user.pk)] === "create";
-      var followBtn = el("button", "igfc-row-btn igfc-row-btn-follow", {
-        type: "button",
-        text: following ? "Following…" : "Follow back",
-      });
-      followBtn.disabled = following;
-      followBtn.addEventListener("click", function () {
-        runFriendshipAction(user, "create");
-      });
-      return followBtn;
-    }
-
+    // You follow them → unfollow
+    if (youFollow) return makeRemoveButton(user);
+    // They follow you, you don't → follow back
+    if (theyFollow) return makeFollowButton(user);
     return null;
   }
 
@@ -952,15 +981,10 @@
       return;
     }
 
-    var showActions =
-      state.activeTab === "notFollowingBack" ||
-      state.activeTab === "notFollowedBack";
-
     var table = el("table", "igfc-table");
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
-    var headers = ["#", "Account", "Name", "Followers", "Following"];
-    if (showActions) headers.push("Action");
+    var headers = ["#", "Account", "Name", "Followers", "Following", "Action"];
     headers.forEach(function (label) {
       var th = el("th", null, { text: label });
       if (label === "#") th.className = "igfc-col-num";
@@ -1034,12 +1058,10 @@
       followingTd.setAttribute("data-igfc-kind", "following");
       tr.appendChild(followingTd);
 
-      if (showActions) {
-        var actionTd = el("td", "igfc-col-action");
-        var btn = actionButtonFor(user);
-        if (btn) actionTd.appendChild(btn);
-        tr.appendChild(actionTd);
-      }
+      var actionTd = el("td", "igfc-col-action");
+      var btn = actionButtonFor(user);
+      if (btn) actionTd.appendChild(btn);
+      tr.appendChild(actionTd);
 
       tbody.appendChild(tr);
     });

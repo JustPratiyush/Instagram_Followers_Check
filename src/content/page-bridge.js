@@ -3,7 +3,7 @@
  * Talks to the content script via window.postMessage.
  */
 (function () {
-  var BRIDGE_VERSION = "1.3.2";
+  var BRIDGE_VERSION = "1.3.4";
   var SOURCE = "ig-follow-check-bridge";
   var APP_ID = "936619743392459";
 
@@ -240,7 +240,7 @@
     do {
       page += 1;
       var params = new URLSearchParams({
-        count: "50",
+        count: "200",
         search_surface: "follow_list_page",
       });
       if (maxId) params.set("max_id", maxId);
@@ -279,7 +279,8 @@
       }
 
       maxId = hasMore ? String(data.next_max_id) : null;
-      if (maxId) await sleep(350 + Math.floor(Math.random() * 250));
+      // Light pacing only — followers + following run as parallel workers.
+      if (maxId) await sleep(60 + Math.floor(Math.random() * 80));
     } while (maxId);
 
     return collected;
@@ -300,53 +301,52 @@
       viewer: viewer,
     });
 
-    post({
-      type: "progress",
-      requestId: requestId,
-      stage: "followers",
-      message: "Loading followers…",
-      viewer: viewer,
-    });
+    var followersLoaded = 0;
+    var followingLoaded = 0;
 
-    var followers = await fetchFriendshipList(
-      viewer.userId,
-      "followers",
-      function (p) {
-        post({
-          type: "progress",
-          requestId: requestId,
-          stage: "followers",
-          message: "Followers loaded: " + p.loaded,
-          loaded: p.loaded,
-          viewer: viewer,
-        });
-      }
-    );
+    function emitListsProgress() {
+      post({
+        type: "progress",
+        requestId: requestId,
+        stage: "lists",
+        message:
+          "Loading lists… " +
+          followersLoaded +
+          " followers, " +
+          followingLoaded +
+          " following",
+        viewer: viewer,
+        followersLoaded: followersLoaded,
+        followingLoaded: followingLoaded,
+        loaded: followersLoaded + followingLoaded,
+      });
+    }
 
     post({
       type: "progress",
       requestId: requestId,
-      stage: "following",
-      message: "Loading following…",
+      stage: "lists",
+      message: "Loading followers and following in parallel…",
       viewer: viewer,
-      followersCount: followers.length,
+      followersLoaded: 0,
+      followingLoaded: 0,
     });
 
-    var following = await fetchFriendshipList(
-      viewer.userId,
-      "following",
-      function (p) {
-        post({
-          type: "progress",
-          requestId: requestId,
-          stage: "following",
-          message: "Following loaded: " + p.loaded,
-          loaded: p.loaded,
-          viewer: viewer,
-          followersCount: followers.length,
-        });
-      }
-    );
+    // Two workers: followers + following at the same time.
+    // Pages inside each list stay sequential (Instagram cursor pagination).
+    var lists = await Promise.all([
+      fetchFriendshipList(viewer.userId, "followers", function (p) {
+        followersLoaded = p.loaded;
+        emitListsProgress();
+      }),
+      fetchFriendshipList(viewer.userId, "following", function (p) {
+        followingLoaded = p.loaded;
+        emitListsProgress();
+      }),
+    ]);
+
+    var followers = lists[0];
+    var following = lists[1];
 
     post({
       type: "result",
