@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Instagram Follow Check</title>
+    <title>Follow Check for Instagram</title>
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
     <main>
       <header>
-        <div class="badge"></div>
         <div>
           <h1>Follow Check</h1>
           <p>No passwords. Uses your logged-in Instagram tab.</p>
+          <p class="disclaimer">Unofficial. Not affiliated with Instagram or Meta.</p>
         </div>
       </header>
 
@@ -20,20 +20,15 @@
         <p id="status">Checking current tab…</p>
         <div class="actions">
           <button id="openBtn" class="primary" type="button">
-            Open panel & scan
+            Open panel
           </button>
           <button id="igBtn" type="button">Open Instagram</button>
         </div>
       </section>
 
-      <section class="card muted">
-        <h2>What you’ll see</h2>
-        <ul>
-          <li>People who follow you back</li>
-          <li>People you follow who don’t follow back</li>
-          <li>People who follow you that you haven’t followed</li>
-        </ul>
-      </section>
+      <figure class="logo">
+        <img src="../../icons/icon256.png" alt="Follow Check for Instagram" />
+      </figure>
     </main>
     <script src="popup.js"></script>
   </body>

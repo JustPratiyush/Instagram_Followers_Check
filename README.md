@@ -1,4 +1,4 @@
-# Instagram Follow Check
+# Follow Check for Instagram
 
 A Chrome extension that compares your Instagram **followers** and **following** from your already logged-in browser session.
 
@@ -83,3 +83,7 @@ Use the **All / Verified / Not verified** filters on any column. Profile counts 
 - No passwords are collected
 - No data is sent to a third-party server by this extension
 - Comparison runs locally in your browser using your Instagram session
+- Nothing is stored — results are discarded when you close or refresh the tab
+- Full policy: [store/privacy-policy.html](store/privacy-policy.html)
+
+This extension is unofficial and is not affiliated with Instagram or Meta.

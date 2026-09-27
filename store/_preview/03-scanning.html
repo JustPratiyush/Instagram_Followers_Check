@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>scanning</title>
+    <link rel="stylesheet" href="../../src/content/panel.css" />
+    <style>
+      html, body { margin: 0; width: 1280px; height: 800px; overflow: hidden; background: #000; }
+      .igfc-backdrop { opacity: 1; }
+      .igfc-panel {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+        width: 980px;
+        height: 740px;
+        max-height: 740px;
+      }
+      .igfc-fab { display: none; }
+      .igfc-spinner { animation: none; border-top-color: #e1306c; }
+      .igfc-load-fill { width: 62%; }
+      .igfc-progress > i { width: 62%; }
+    </style>
+  </head>
+  <body>
+    <div id="igfc-root">
+      <div class="igfc-backdrop igfc-open"></div>
+      <div class="igfc-panel igfc-open">
+        <div class="igfc-header">
+          <h1 class="igfc-title">Follow Check for Instagram</h1>
+          <div class="igfc-status">Loading lists… 114 followers, 320 following</div>
+          <button class="igfc-close" type="button">×</button>
+        </div>
+        <div class="igfc-progress igfc-progress-active"><i class="igfc-progress-fill" style="width:62%"></i></div>
+        <div class="igfc-body igfc-body-center">
+          <div class="igfc-hero igfc-loading">
+            <div class="igfc-spinner"><span></span></div>
+            <h2 class="igfc-loading-title">Scanning your lists</h2>
+            <p class="igfc-hero-copy">Loading lists… 114 followers, 320 following</p>
+            <div class="igfc-load-meters">
+              <div class="igfc-load-meter"><span>Followers</span><strong>114</strong></div>
+              <div class="igfc-load-meter"><span>Following</span><strong>320</strong></div>
+            </div>
+            <div class="igfc-load-track"><div class="igfc-load-fill"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

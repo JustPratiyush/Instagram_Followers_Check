@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>start</title>
+    <link rel="stylesheet" href="../../src/content/panel.css" />
+    <style>
+      html, body { margin: 0; width: 1280px; height: 800px; overflow: hidden; background: #000; }
+      #igfc-root { pointer-events: none; }
+      .igfc-backdrop { opacity: 1; }
+      .igfc-panel {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+        width: 980px;
+        height: 740px;
+        max-height: 740px;
+      }
+      .igfc-fab { display: none; }
+    </style>
+  </head>
+  <body>
+    <div id="igfc-root">
+      <div class="igfc-backdrop igfc-open"></div>
+      <div class="igfc-panel igfc-open">
+        <div class="igfc-header">
+          <h1 class="igfc-title">Follow Check for Instagram</h1>
+          <button class="igfc-close" type="button">×</button>
+        </div>
+        <div class="igfc-body igfc-body-center">
+          <div class="igfc-hero">
+            <p class="igfc-hero-copy">Load your followers and following from this logged-in session.</p>
+            <p class="igfc-hero-disclosure">By scanning, you allow this unofficial extension to read your follower and following lists from your existing Instagram session. The comparison runs only in this tab: nothing is sent to the developer or saved after you close it. No passwords are collected. Not affiliated with Instagram or Meta.</p>
+            <button class="igfc-btn igfc-btn-primary igfc-hero-btn" type="button">Scan my lists</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

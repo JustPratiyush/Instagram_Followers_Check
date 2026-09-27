@@ -292,6 +292,19 @@
   letter-spacing: 0.01em;
 }
 
+.igfc-counts-error .igfc-counts-progress-meta {
+  justify-content: flex-start;
+}
+
+.igfc-counts-error .igfc-counts-progress-label {
+  color: #ffb4b4;
+  line-height: 1.45;
+}
+
+.igfc-counts-error .igfc-counts-progress-track {
+  display: none;
+}
+
 .igfc-counts-progress-track {
   height: 2px;
   width: 100%;
@@ -361,7 +374,15 @@
   color: var(--igfc-muted);
   font-size: 13px;
   line-height: 1.45;
-  max-width: 36ch;
+  max-width: 42ch;
+}
+
+.igfc-hero-disclosure {
+  margin: 0;
+  color: #6f6f6f;
+  font-size: 11px;
+  line-height: 1.5;
+  max-width: 52ch;
 }
 
 .igfc-hero-btn {

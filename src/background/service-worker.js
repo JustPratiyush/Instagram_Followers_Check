@@ -1,6 +1,21 @@
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("Instagram Follow Check installed");
+  console.log("Follow Check for Instagram installed");
 });
+
+// Only these image CDNs are covered by host_permissions; never fetch anything else.
+var AVATAR_HOST_SUFFIXES = [".cdninstagram.com", ".fbcdn.net"];
+
+function isAllowedAvatarUrl(url) {
+  try {
+    var parsed = new URL(url);
+    if (parsed.protocol !== "https:") return false;
+    return AVATAR_HOST_SUFFIXES.some(function (suffix) {
+      return parsed.hostname.endsWith(suffix);
+    });
+  } catch (_) {
+    return false;
+  }
+}
 
 function arrayBufferToBase64(buffer) {
   var bytes = new Uint8Array(buffer);
@@ -33,20 +48,17 @@ async function fetchAvatarDataUrl(url) {
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message && message.type === "GET_LAST_RESULT") {
-    chrome.storage.local.get(["igfcLastResult"], (data) => {
-      sendResponse({ result: data.igfcLastResult || null });
-    });
-    return true;
-  }
-
   if (message && message.type === "OPEN_INSTAGRAM") {
     chrome.tabs.create({ url: "https://www.instagram.com/" });
     sendResponse({ ok: true });
     return false;
   }
 
-  if (message && message.type === "FETCH_AVATAR" && message.url) {
+  if (message && message.type === "FETCH_AVATAR") {
+    if (!isAllowedAvatarUrl(message.url)) {
+      sendResponse({ ok: false, error: "Avatar host not allowed" });
+      return false;
+    }
     fetchAvatarDataUrl(message.url)
       .then(function (dataUrl) {
         sendResponse({ ok: true, dataUrl: dataUrl });

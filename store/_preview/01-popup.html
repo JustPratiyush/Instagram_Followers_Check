@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>popup</title>
+    <link rel="stylesheet" href="../../src/popup/popup.css" />
+    <style>
+      html, body {
+        margin: 0;
+        width: 1280px;
+        height: 800px;
+        background: #0b0b0b;
+        overflow: hidden;
+      }
+      .stage {
+        width: 1280px;
+        height: 800px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(ellipse at 50% 42%, #1a1a1a 0%, #0b0b0b 62%);
+      }
+      .frame {
+        width: 320px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+        border: 1px solid #2a2a2a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <div class="frame">
+        <main>
+          <header>
+            <div>
+              <h1>Follow Check</h1>
+              <p>No passwords. Uses your logged-in Instagram tab.</p>
+              <p class="disclaimer">Unofficial. Not affiliated with Instagram or Meta.</p>
+            </div>
+          </header>
+          <section class="card">
+            <p id="status">Instagram tab detected. Open the panel to scan followers & following.</p>
+            <div class="actions">
+              <button class="primary" type="button">Open panel</button>
+              <button type="button">Open Instagram</button>
+            </div>
+          </section>
+          <figure class="logo">
+            <img src="../../icons/icon256.png" alt="" />
+          </figure>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

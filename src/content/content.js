@@ -33,6 +33,8 @@
   var detailsQueue = [];
   var detailsQueued = {};
   var detailsInFlight = 0;
+  var detailsLastError = "";
+  var detailsLoggedErrors = {};
 
   function compareLists(followers, following) {
     var followerMap = {};
@@ -176,14 +178,17 @@
     list = list || (hasResults() && !state.scanning ? getVisibleList() : []);
     var total = list.length;
     var done = 0;
+    var failed = 0;
     for (var i = 0; i < list.length; i++) {
       var cached = detailsCache[String(list[i].pk || "")];
       if (cached && !cached.loading && cached.ok != null) done += 1;
+      if (cached && cached.ok === false) failed += 1;
     }
     var active = detailsInFlight > 0 || detailsQueue.length > 0;
     return {
       total: total,
       done: done,
+      failed: failed,
       active: active && done < total,
       pct: total ? Math.round((done / total) * 100) : 0,
     };
@@ -199,11 +204,25 @@
 
     var progress = getDetailsProgress();
     if (!progress.active && progress.done >= progress.total) {
+      // Finished: if Instagram refused some lookups, say why instead of leaving blanks.
+      if (progress.failed > 0 && detailsLastError) {
+        refs.countsProgress.classList.remove("igfc-hidden");
+        refs.countsProgress.classList.add("igfc-counts-error");
+        refs.countsProgressLabel.textContent =
+          "Couldn't load counts for " +
+          progress.failed +
+          " of " +
+          progress.total +
+          ". Instagram's answer — " +
+          detailsLastError;
+        return;
+      }
       refs.countsProgress.classList.add("igfc-hidden");
       return;
     }
 
     refs.countsProgress.classList.remove("igfc-hidden");
+    refs.countsProgress.classList.remove("igfc-counts-error");
     refs.countsProgressBar.style.width = Math.max(4, progress.pct) + "%";
     refs.countsProgressLabel.textContent =
       "Loading counts " + progress.done + "/" + progress.total;
@@ -225,18 +244,29 @@
     }
   }
 
+  function noteDetailsError(message) {
+    if (!message) return;
+    detailsLastError = message;
+    if (!detailsLoggedErrors[message]) {
+      detailsLoggedErrors[message] = true;
+      console.warn("[Follow Check] Couldn't load counts: " + message);
+    }
+  }
+
   function onUserCountsResult(data) {
     var key = String(data.userId || "");
     delete detailsQueued[key];
     detailsInFlight = Math.max(0, detailsInFlight - 1);
 
     if (!data.ok) {
-      detailsCache[key] = { ok: false, loading: false };
+      detailsCache[key] = { ok: false, loading: false, error: data.message || "" };
+      noteDetailsError(data.message);
       var failNodes = document.querySelectorAll(
         '#igfc-root [data-igfc-pk="' + key + '"]'
       );
       for (var i = 0; i < failNodes.length; i++) {
         failNodes[i].textContent = "—";
+        failNodes[i].title = data.message || "";
       }
     } else {
       var details = {
@@ -304,7 +334,7 @@
 
     var fab = el("button", "igfc-fab", {
       type: "button",
-      title: "Instagram Follow Check",
+      title: "Follow Check for Instagram",
     });
     fab.appendChild(el("span", "igfc-fab-dot"));
     fab.appendChild(document.createTextNode("Follow Check"));
@@ -320,7 +350,9 @@
     var panel = el("div", "igfc-panel igfc-hidden");
 
     var header = el("div", "igfc-header");
-    header.appendChild(el("h1", "igfc-title", { text: "Instagram Follow Check" }));
+    header.appendChild(
+      el("h1", "igfc-title", { text: "Follow Check for Instagram" })
+    );
 
     var actions = el("div", "igfc-actions");
     var scanBtn = el("button", "igfc-btn igfc-btn-primary", {
@@ -498,7 +530,6 @@
         data.action === "destroy"
           ? "Removed @" + data.username + " on Instagram"
           : "Followed @" + data.username + " on Instagram";
-      persistResult();
       renderAll();
       return;
     }
@@ -556,7 +587,6 @@
           : "you") +
         ".";
       state.error = "";
-      persistResult();
       renderAll();
     }
   }
@@ -622,25 +652,6 @@
       userId: user.pk,
       username: user.username,
     });
-  }
-
-  function persistResult() {
-    try {
-      chrome.storage.local.set({
-        igfcLastResult: {
-          savedAt: Date.now(),
-          viewer: state.viewer,
-          comparison: {
-            counts: state.comparison.counts,
-            mutual: state.comparison.mutual,
-            notFollowingBack: state.comparison.notFollowingBack,
-            notFollowedBack: state.comparison.notFollowedBack,
-          },
-          followers: state.followers,
-          following: state.following,
-        },
-      });
-    } catch (_) {}
   }
 
   function currentList() {
@@ -893,6 +904,11 @@
         text: "Load your followers and following from this logged-in session.",
       })
     );
+    wrap.appendChild(
+      el("p", "igfc-hero-disclosure", {
+        text: "By scanning, you allow this unofficial extension to read your follower and following lists from your existing Instagram session. The comparison runs only in this tab: nothing is sent to the developer or saved after you close it. No passwords are collected. Not affiliated with Instagram or Meta.",
+      })
+    );
     var heroBtn = el("button", "igfc-btn igfc-btn-primary igfc-hero-btn", {
       type: "button",
       text: "Scan my lists",
@@ -1058,6 +1074,10 @@
       followingTd.setAttribute("data-igfc-pk", String(user.pk || ""));
       followingTd.setAttribute("data-igfc-kind", "following");
       tr.appendChild(followingTd);
+      if (cached && cached.ok === false && cached.error) {
+        followersTd.title = cached.error;
+        followingTd.title = cached.error;
+      }
 
       var actionTd = el("td", "igfc-col-action");
       var btn = actionButtonFor(user);
@@ -1083,7 +1103,9 @@
 
   function csvEscape(value) {
     var s = String(value == null ? "" : value);
-    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    // Display names come from other people; stop spreadsheets running them as formulas.
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
     return s;
   }
 
@@ -1154,7 +1176,6 @@
     if (message && message.type === "IGFC_OPEN") {
       ensureUi();
       setOpen(true);
-      if (message.autoScan) startScan();
       sendResponse({ ok: true });
       return false;
     }

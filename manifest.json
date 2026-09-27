@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
-  "name": "Instagram Follow Check",
-  "version": "1.3.5",
-  "description": "Compare your Instagram followers and following while logged in — see mutuals, not following back, and not followed back. No passwords.",
-  "permissions": ["storage", "activeTab"],
+  "name": "Follow Check for Instagram",
+  "version": "1.4.0",
+  "description": "Unofficial tool to compare Instagram followers and following from your logged-in tab. No passwords. Not affiliated with Meta.",
+  "homepage_url": "https://github.com/JustPratiyush/Instagram_Followers_Check",
   "host_permissions": [
     "https://www.instagram.com/*",
     "https://*.cdninstagram.com/*",
     "https://*.fbcdn.net/*"
   ],
   "action": {
-    "default_title": "Instagram Follow Check",
+    "default_title": "Follow Check for Instagram",
     "default_popup": "src/popup/popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

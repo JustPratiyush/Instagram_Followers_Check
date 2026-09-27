@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy Policy — Follow Check for Instagram</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111;
+        --text: #f2f2f2;
+        --muted: #9a9a9a;
+        --line: #2a2a2a;
+        --accent: #e1306c;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.55 "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 20px 80px;
+      }
+      h1 { font-size: 28px; letter-spacing: -0.03em; margin: 0 0 8px; }
+      h2 { font-size: 18px; margin: 32px 0 10px; }
+      p, li { color: var(--muted); }
+      .meta { color: #777; font-size: 13px; margin-bottom: 28px; }
+      a { color: var(--accent); }
+      ul { padding-left: 18px; }
+      .note {
+        border: 1px solid var(--line);
+        padding: 14px 16px;
+        margin: 20px 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Privacy Policy</h1>
+      <p class="meta">Follow Check for Instagram (unofficial Chrome extension)<br />Effective date: 27 September 2026</p>
+
+      <div class="note">
+        This extension is an unofficial, independent project. It is not affiliated with,
+        endorsed by, or sponsored by Instagram, Meta Platforms, Inc., or any of their
+        affiliates.
+      </div>
+
+      <p>
+        Follow Check for Instagram (“the extension”, “we”) compares the followers and
+        following lists of the Instagram account you are already logged into in Chrome.
+        It does not ask for your Instagram password and does not operate a backend
+        server of its own.
+      </p>
+
+      <h2>What information the extension accesses</h2>
+      <p>Only after you click <strong>Scan my lists</strong> (or an equivalent scan action), the extension may read, from your current logged-in Instagram tab:</p>
+      <ul>
+        <li>Your Instagram username and profile identifiers for the signed-in account</li>
+        <li>Usernames, display names, verification flags, and profile image URLs of accounts in your followers and following lists</li>
+        <li>Public follower/following counts shown on those profiles</li>
+        <li>Session cookies already stored by instagram.com in your browser (including a CSRF token) so requests can be made as you, from that tab</li>
+      </ul>
+      <p>
+        The extension also fetches profile images from Instagram’s image CDNs
+        (<code>*.cdninstagram.com</code> and <code>*.fbcdn.net</code>) so avatars can be shown in the panel.
+      </p>
+
+      <h2>How the information is used</h2>
+      <p>Data is used only to provide the extension’s single purpose:</p>
+      <ul>
+        <li>Compare followers and following</li>
+        <li>Show mutuals, accounts that don’t follow you back, and accounts you don’t follow back</li>
+        <li>Let you search/filter those lists and export a CSV on your computer</li>
+        <li>Let you unfollow or follow back from the same logged-in Instagram session, when you click those buttons</li>
+      </ul>
+
+      <h2>Where data is stored</h2>
+      <p>
+        Scan results are kept only in the memory of the Instagram tab where you ran
+        the scan. They are not written to Chrome storage, not uploaded to any
+        developer-operated server, and they are discarded when you refresh or close
+        that tab. If you click <strong>Export CSV</strong>, your browser saves that file to
+        your computer, and you control it from then on.
+      </p>
+      <p>
+        We do not use analytics, advertising, crash reporters, or third-party
+        trackers in this extension.
+      </p>
+
+      <h2>Sharing</h2>
+      <p>
+        We do not sell, rent, or share your data with third parties. Network
+        requests made by the extension go only to Instagram and its CDNs as needed
+        for the features above, using your existing browser session.
+      </p>
+
+      <h2>Retention and deletion</h2>
+      <p>
+        The extension does not retain your data. Results disappear when you refresh
+        or close the Instagram tab, and the developer never receives a copy, so there
+        is nothing for us to delete. Uninstalling removes the extension completely.
+      </p>
+
+      <h2>Permissions</h2>
+      <ul>
+        <li><code>https://www.instagram.com/*</code> — run the in-page panel and use your logged-in session</li>
+        <li><code>https://*.cdninstagram.com/*</code> and <code>https://*.fbcdn.net/*</code> — load profile photos shown in the results</li>
+      </ul>
+      <p>The extension requests no other permissions.</p>
+
+      <h2>Limited Use</h2>
+      <p>
+        The use of information received from this extension’s access to your
+        Instagram session will adhere to the Chrome Web Store User Data Policy,
+        including the Limited Use requirements. Data is used only to provide or
+        improve the disclosed single purpose: comparing your Instagram followers
+        and following in the browser.
+      </p>
+
+      <h2>Children</h2>
+      <p>The extension is not directed at children under 13.</p>
+
+      <h2>Changes</h2>
+      <p>
+        If this policy changes, we will update this page and the “Effective date”
+        above. Continued use after an update means you accept the revised policy.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Questions or concerns:
+        <a href="https://github.com/JustPratiyush/Instagram_Followers_Check/issues">GitHub Issues</a>
+      </p>
+    </main>
+  </body>
+</html>

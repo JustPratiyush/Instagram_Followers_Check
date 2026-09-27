@@ -1,0 +1,7 @@
+.DS_Store
+**/.DS_Store
+cws-upload.zip
+cws-upload/
+
+# Local-only backups (never commit: contains Instagram trademarks)
+.backup/

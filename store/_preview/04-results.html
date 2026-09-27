@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>results</title>
+    <link rel="stylesheet" href="../../src/content/panel.css" />
+    <style>
+      html, body { margin: 0; width: 1280px; height: 800px; overflow: hidden; background: #000; }
+      .igfc-backdrop { opacity: 1; }
+      .igfc-panel {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+        width: 980px;
+        height: 740px;
+        max-height: 740px;
+      }
+      .igfc-fab { display: none; }
+      .igfc-body { min-height: 0; }
+      .igfc-avatar-fallback:nth-of-type(1) { background: #3a2a4a; }
+    </style>
+  </head>
+  <body>
+    <div id="igfc-root">
+      <div class="igfc-backdrop igfc-open"></div>
+      <div class="igfc-panel igfc-open">
+        <div class="igfc-header">
+          <h1 class="igfc-title">Follow Check for Instagram</h1>
+          <div class="igfc-actions">
+            <button class="igfc-btn igfc-btn-primary" type="button">Scan my lists</button>
+            <button class="igfc-btn" type="button">Export CSV</button>
+          </div>
+          <div class="igfc-status">Done for @demo.account</div>
+          <button class="igfc-close" type="button">×</button>
+        </div>
+        <div class="igfc-stats">
+          <button class="igfc-stat igfc-active" type="button"><span>Don't follow you</span><strong>90</strong></button>
+          <button class="igfc-stat" type="button"><span>You don't follow</span><strong>29</strong></button>
+          <button class="igfc-stat" type="button"><span>Follow back</span><strong>230</strong></button>
+          <button class="igfc-stat" type="button"><span>Followers</span><strong>259</strong></button>
+          <button class="igfc-stat" type="button"><span>Following</span><strong>320</strong></button>
+        </div>
+        <div class="igfc-subfilters">
+          <span class="igfc-subfilters-label">Filter</span>
+          <button class="igfc-subfilter igfc-active" type="button">All (90)</button>
+          <button class="igfc-subfilter" type="button">Verified (34)</button>
+          <button class="igfc-subfilter" type="button">Not verified (56)</button>
+        </div>
+        <div class="igfc-search-row">
+          <input class="igfc-search" value="" placeholder="Search username or name…" readonly />
+        </div>
+        <div class="igfc-counts-progress">
+          <div class="igfc-counts-progress-meta">
+            <span class="igfc-counts-progress-label">Loading counts 77/90</span>
+          </div>
+          <div class="igfc-counts-progress-track">
+            <i class="igfc-counts-progress-bar" style="width:85%; animation:none"></i>
+          </div>
+        </div>
+        <div class="igfc-body">
+          <table class="igfc-table">
+            <thead>
+              <tr>
+                <th class="igfc-col-num">#</th>
+                <th>Account</th>
+                <th>Name</th>
+                <th class="igfc-col-count">Followers</th>
+                <th class="igfc-col-count">Following</th>
+                <th class="igfc-col-action">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="igfc-col-num">1</td>
+                <td><div class="igfc-user"><span class="igfc-avatar-fallback">M</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@maple.studio</a></div></div></div></td>
+                <td>Jordan Lee</td>
+                <td class="igfc-col-count">540</td>
+                <td class="igfc-col-count">566</td>
+                <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
+              </tr>
+              <tr>
+                <td class="igfc-col-num">2</td>
+                <td><div class="igfc-user"><span class="igfc-avatar-fallback">N</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@northbeam</a><span class="igfc-verified">✓</span></div></div></div></td>
+                <td>Alex Rivera</td>
+                <td class="igfc-col-count">633K</td>
+                <td class="igfc-col-count">49</td>
+                <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
+              </tr>
+              <tr>
+                <td class="igfc-col-num">3</td>
+                <td><div class="igfc-user"><span class="igfc-avatar-fallback">Q</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@quiet.harbor</a></div></div></div></td>
+                <td>Sam Okonkwo</td>
+                <td class="igfc-col-count">854K</td>
+                <td class="igfc-col-count">82</td>
+                <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
+              </tr>
+              <tr>
+                <td class="igfc-col-num">4</td>
+                <td><div class="igfc-user"><span class="igfc-avatar-fallback">L</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@lumen.notes</a></div></div></div></td>
+                <td>Riley Chen</td>
+                <td class="igfc-col-count">12.4K</td>
+                <td class="igfc-col-count">401</td>
+                <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
+              </tr>
+              <tr>
+                <td class="igfc-col-num">5</td>
+                <td><div class="igfc-user"><span class="igfc-avatar-fallback">C</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@cedar.wave</a><span class="igfc-verified">✓</span></div></div></div></td>
+                <td>Priya Raman</td>
+                <td class="igfc-col-count">91.2K</td>
+                <td class="igfc-col-count">188</td>
+                <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

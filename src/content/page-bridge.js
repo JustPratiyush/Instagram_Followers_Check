@@ -3,7 +3,11 @@
  * Talks to the content script via window.postMessage.
  */
 (function () {
-  var BRIDGE_VERSION = "1.3.5";
+  // Same ?v= the content script appends (the manifest version), so it can't go stale.
+  var BRIDGE_VERSION =
+    (document.currentScript &&
+      new URL(document.currentScript.src).searchParams.get("v")) ||
+    "dev";
   var SOURCE = "ig-follow-check-bridge";
   var APP_ID = "936619743392459";
 
@@ -82,6 +86,24 @@
       }
     }
 
+    // Rate limits and action blocks: surface them so callers stop instead of retrying.
+    var igMessage = (data && (data.message || data.feedback_message)) || "";
+    if (
+      res.status === 429 ||
+      (data && data.spam) ||
+      /wait a few minutes|try again later|too many requests/i.test(igMessage)
+    ) {
+      var limitError = new Error(
+        ((data && (data.feedback_message || data.message)) ||
+          "Instagram is limiting requests right now. Wait a few minutes, then try again.") +
+          " (HTTP " +
+          res.status +
+          ")"
+      );
+      limitError.rateLimited = true;
+      throw limitError;
+    }
+
     if (!res.ok) {
       var snippet = text ? ": " + text.slice(0, 160) : "";
       throw new Error("HTTP " + res.status + " for " + url + snippet);
@@ -102,7 +124,26 @@
     }
 
     // Prefer real JSON. Empty/non-JSON success bodies are treated as unknown.
-    return data == null ? { __raw: text, __empty: !text } : data;
+    return data == null
+      ? { __raw: text, __empty: !text, __url: res.url, __redirected: res.redirected }
+      : data;
+  }
+
+  // Short, human-readable reason for a failed count lookup (shown in the panel).
+  function describeCountsFailure(err, response) {
+    if (err) {
+      return String((err && err.message) || err).replace(
+        / for https:\/\/\S+?(?=: |$)/,
+        ""
+      );
+    }
+    if (response && response.__redirected && /\/accounts\/login\//.test(response.__url)) {
+      return "Instagram redirected to its login page";
+    }
+    if (response && response.__raw != null) {
+      return response.__empty ? "empty response" : "got a web page instead of data";
+    }
+    return "no follower counts in the response";
   }
 
   function pickProfilePic(u) {
@@ -190,6 +231,7 @@
         body: body,
       });
     } catch (err) {
+      if (err && err.rateLimited) throw err;
       lastError = err;
     }
 
@@ -222,6 +264,7 @@
             data.result === "following" ||
             data.result === "requested");
       } catch (err) {
+        if (err && err.rateLimited) throw err;
         lastError = err;
       }
     }
@@ -299,6 +342,9 @@
   }
 
   async function fetchUserCounts(userId, username) {
+    // Same two lookups as before; we just keep each one's reason if it fails.
+    var reasons = [];
+
     if (userId) {
       try {
         var info = await igFetch(
@@ -306,21 +352,31 @@
         );
         var fromInfo = extractCounts(info && info.user);
         if (fromInfo) return fromInfo;
-      } catch (_) {}
+        reasons.push("user info: " + describeCountsFailure(null, info));
+      } catch (err) {
+        reasons.push("user info: " + describeCountsFailure(err));
+      }
     }
 
     if (username) {
-      var profile = await igFetch(
-        "https://www.instagram.com/api/v1/users/web_profile_info/?username=" +
-          encodeURIComponent(username)
-      );
-      var fromProfile = extractCounts(
-        profile && profile.data && profile.data.user
-      );
-      if (fromProfile) return fromProfile;
+      try {
+        var profile = await igFetch(
+          "https://www.instagram.com/api/v1/users/web_profile_info/?username=" +
+            encodeURIComponent(username)
+        );
+        var fromProfile = extractCounts(
+          profile && profile.data && profile.data.user
+        );
+        if (fromProfile) return fromProfile;
+        reasons.push("profile info: " + describeCountsFailure(null, profile));
+      } catch (err) {
+        reasons.push("profile info: " + describeCountsFailure(err));
+      }
     }
 
-    throw new Error("Could not load counts for @" + (username || userId));
+    throw new Error(
+      reasons.join(" · ") || "Could not load counts for @" + (username || userId)
+    );
   }
 
   async function resolveViewer() {
@@ -343,7 +399,9 @@
           full_name: form.first_name || "",
         };
       }
-    } catch (_) {}
+    } catch (err) {
+      if (err && err.rateLimited) throw err;
+    }
 
     try {
       var infoData = await igFetch(
@@ -357,7 +415,9 @@
           full_name: user.full_name || "",
         };
       }
-    } catch (_) {}
+    } catch (err) {
+      if (err && err.rateLimited) throw err;
+    }
 
     var profileLink =
       document.querySelector(

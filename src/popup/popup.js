@@ -26,10 +26,8 @@ async function init() {
       "Instagram tab detected. Open the panel to scan followers & following.";
     openBtn.onclick = async function () {
       try {
-        await chrome.tabs.sendMessage(tab.id, {
-          type: "IGFC_OPEN",
-          autoScan: true,
-        });
+        // Opens the panel only; the user starts the scan there after seeing the disclosure.
+        await chrome.tabs.sendMessage(tab.id, { type: "IGFC_OPEN" });
         window.close();
       } catch (err) {
         status.textContent =
