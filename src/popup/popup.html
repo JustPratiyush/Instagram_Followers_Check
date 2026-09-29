@@ -9,26 +9,48 @@
   <body>
     <main>
       <header>
-        <div>
+        <img class="brand-icon" src="../../icons/icon128.png" alt="" />
+        <div class="brand-text">
           <h1>Follow Check</h1>
-          <p>No passwords. Uses your logged-in Instagram tab.</p>
           <p class="disclaimer">Unofficial. Not affiliated with Instagram or Meta.</p>
         </div>
+        <span id="version" class="version"></span>
       </header>
 
-      <section class="card">
-        <p id="status">Checking current tab…</p>
-        <div class="actions">
-          <button id="openBtn" class="primary" type="button">
-            Open panel
-          </button>
-          <button id="igBtn" type="button">Open Instagram</button>
+      <form id="checkForm" class="card" novalidate>
+        <label class="label" for="username">Username</label>
+        <p class="help">
+          See who they follow back, who doesn't follow them, and their mutuals.
+        </p>
+        <div class="field">
+          <span class="at" aria-hidden="true">@</span>
+          <input
+            id="username"
+            type="text"
+            placeholder="username or profile link"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            maxlength="100"
+          />
         </div>
+        <button id="checkBtn" class="primary" type="submit">Check</button>
+        <p id="status" class="status" role="status" aria-live="polite" hidden></p>
+      </form>
+
+      <section id="recent" class="recent" hidden>
+        <h2>Recent</h2>
+        <ul id="recentList"></ul>
       </section>
 
-      <figure class="logo">
-        <img src="../../icons/icon256.png" alt="Follow Check for Instagram" />
-      </figure>
+      <section class="own">
+        <button id="selfBtn" type="button">Scan my own account</button>
+        <p class="note">
+          Works for public accounts, and private ones you follow. Uses your
+          logged-in Instagram tab: no passwords, and nothing is sent to the
+          developer or saved.
+        </p>
+      </section>
     </main>
     <script src="popup.js"></script>
   </body>

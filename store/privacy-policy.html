@@ -43,7 +43,7 @@
   <body>
     <main>
       <h1>Privacy Policy</h1>
-      <p class="meta">Follow Check for Instagram (unofficial Chrome extension)<br />Effective date: 27 September 2026</p>
+      <p class="meta">Follow Check for Instagram (unofficial Chrome extension)<br />Effective date: 29 September 2026</p>
 
       <div class="note">
         This extension is an unofficial, independent project. It is not affiliated with,
@@ -53,17 +53,18 @@
 
       <p>
         Follow Check for Instagram (“the extension”, “we”) compares the followers and
-        following lists of the Instagram account you are already logged into in Chrome.
+        following lists of the Instagram account you are already logged into in Chrome,
+        or of another account whose username you enter.
         It does not ask for your Instagram password and does not operate a backend
         server of its own.
       </p>
 
       <h2>What information the extension accesses</h2>
-      <p>Only after you click <strong>Scan my lists</strong> (or an equivalent scan action), the extension may read, from your current logged-in Instagram tab:</p>
+      <p>Only after you click <strong>Scan my lists</strong> or <strong>Check</strong>, the extension may read, from your current logged-in Instagram tab:</p>
       <ul>
         <li>Your Instagram username and profile identifiers for the signed-in account</li>
-        <li>Usernames, display names, verification flags, and profile image URLs of accounts in your followers and following lists</li>
-        <li>Public follower/following counts shown on those profiles</li>
+        <li>If you check another account: the username you entered, that account’s profile identifiers, and the follower/following totals shown on its profile</li>
+        <li>Usernames, display names, verification flags, and profile image URLs of accounts in the followers and following lists being compared</li>
         <li>Session cookies already stored by instagram.com in your browser (including a CSRF token) so requests can be made as you, from that tab</li>
       </ul>
       <p>
@@ -75,9 +76,9 @@
       <p>Data is used only to provide the extension’s single purpose:</p>
       <ul>
         <li>Compare followers and following</li>
-        <li>Show mutuals, accounts that don’t follow you back, and accounts you don’t follow back</li>
+        <li>Show mutuals, accounts that don’t follow back, and accounts not followed back (for you, or for the account you check)</li>
         <li>Let you search/filter those lists and export a CSV on your computer</li>
-        <li>Let you unfollow or follow back from the same logged-in Instagram session, when you click those buttons</li>
+        <li>Let you unfollow or follow back accounts in your own lists from the same logged-in Instagram session, when you click those buttons</li>
       </ul>
 
       <h2>Where data is stored</h2>
@@ -87,6 +88,12 @@
         developer-operated server, and they are discarded when you refresh or close
         that tab. If you click <strong>Export CSV</strong>, your browser saves that file to
         your computer, and you control it from then on.
+      </p>
+      <p>
+        The extension’s popup remembers up to five usernames you recently checked, in
+        the extension’s local storage on this browser, so you can check them again with
+        one click. They are never sent anywhere. Remove any of them with the × next to
+        it, or all of them by uninstalling the extension.
       </p>
       <p>
         We do not use analytics, advertising, crash reporters, or third-party
@@ -104,7 +111,8 @@
       <p>
         The extension does not retain your data. Results disappear when you refresh
         or close the Instagram tab, and the developer never receives a copy, so there
-        is nothing for us to delete. Uninstalling removes the extension completely.
+        is nothing for us to delete. The only thing kept is the short list of recently
+        checked usernames described above, on your own browser. Uninstalling removes the extension completely.
       </p>
 
       <h2>Permissions</h2>
@@ -119,8 +127,8 @@
         The use of information received from this extension’s access to your
         Instagram session will adhere to the Chrome Web Store User Data Policy,
         including the Limited Use requirements. Data is used only to provide or
-        improve the disclosed single purpose: comparing your Instagram followers
-        and following in the browser.
+        improve the disclosed single purpose: comparing Instagram followers and
+        following in the browser.
       </p>
 
       <h2>Children</h2>

@@ -1,6 +1,6 @@
 # Chrome Web Store submission kit
 
-Everything you need to fill in the Developer Dashboard, field by field. Every answer below matches what the code in version **1.4.0** actually does. Reviewers check that these match, so update this file whenever the code changes.
+Everything you need to fill in the Developer Dashboard, field by field. Every answer below matches what the code in version **1.5.0** actually does. Reviewers check that these match, so update this file whenever the code changes.
 
 ---
 
@@ -55,10 +55,10 @@ In the dashboard: **Items → New item → upload `cws-upload.zip`**.
 
 > Instagram's brand rules only allow "for Instagram" style names. Don't rename it to anything starting with "Instagram", or containing "Insta" or "Gram".
 
-**Summary** (comes from the manifest, 125/132 chars):
+**Summary** (comes from the manifest, 132/132 chars):
 
 ```text
-Unofficial tool to compare Instagram followers and following from your logged-in tab. No passwords. Not affiliated with Meta.
+Unofficial tool to compare followers and following for your Instagram or any public profile. No passwords. Not affiliated with Meta.
 ```
 
 **Description** (paste as-is; it mentions "Instagram" 4 times on purpose, since repeating a keyword more than 5 times counts as keyword spam):
@@ -72,26 +72,27 @@ WHAT IT DOES
 • See who doesn't follow you back, with a Remove button
 • See who follows you that you don't follow, with a Follow back button
 • See your mutual follows
+• Check any public account (or a private one you follow): who they follow back, who doesn't follow them back, and their mutuals
 • Filter any list by verified / not verified accounts
-• See each account's follower and following counts
 • Search by username or name
 • Export the results as a CSV file
 
 HOW IT WORKS
 1. Open instagram.com and sign in as usual.
-2. Click the extension icon, then Open panel (or click the Follow Check button on the page).
+2. Click the Follow Check icon at the top right of the page (or the extension icon, then Scan my own account).
 3. Click Scan my lists.
 4. Browse the results. Everything runs inside that browser tab.
+To check someone else, click the extension icon, type their username and click Check.
 
 PRIVACY
 • No password is ever requested or collected.
 • Nothing is sent to the developer or to any third-party server.
 • Nothing is stored: results are discarded when you close or refresh the tab.
-• Network requests go only to Instagram and its image servers, using your existing signed-in session, and only after you click Scan, Remove, or Follow back.
+• Network requests go only to Instagram and its image servers, using your existing signed-in session, and only after you click Scan, Check, Remove, or Follow back.
 
 GOOD TO KNOW
 • Follow and unfollow happen one account at a time, only when you click. There is no bulk or automatic unfollowing.
-• Large accounts take longer to scan. Follower and following counts for each account load in the background after the scan.
+• Large accounts take longer to scan. Checking someone else works for accounts with up to 20,000 followers or following.
 ```
 
 **Category:** Lifestyle → Social Networking
@@ -111,7 +112,7 @@ GOOD TO KNOW
 
 The screenshots and promo tiles are rendered from `store/_preview/*.html`. If the UI changes, update those files and run `sh store/render-graphics.sh` instead of editing the PNGs by hand.
 
-The icon is built from `icons/icon-source.png`, with an even black border sized as a percentage of the icon. To change the border or the artwork, replace the source and/or run `sh store/build-icons.sh 10` (border %, default 8; keep it at 7 or more so the magnifier handle fits). This rebuilds every icon size and re-renders all the store images above.
+The icon is built from `icons/icon-source.png`, edge to edge with rounded (transparent) corners. To change the corner radius or the artwork, replace the source and/or run `sh store/build-icons.sh 22` (radius as % of the icon size, default 22). This rebuilds every icon size and re-renders all the store images above.
 
 Never use Instagram's camera logo (glyph) or wordmark in any of these images.
 
@@ -127,7 +128,7 @@ Never use Instagram's camera logo (glyph) or wordmark in any of these images.
 **Single purpose description:**
 
 ```text
-Compare the signed-in user's Instagram followers and following lists, show who does and doesn't follow back, and let the user follow back or unfollow individual accounts from those lists.
+Compare Instagram followers and following lists, for the signed-in user or for an account whose username they enter, show who does and doesn't follow back and who is mutual, and let the user follow back or unfollow individual accounts from their own lists.
 ```
 
 **Permission justifications.** The manifest requests **only host permissions**; there are no API permissions to justify.
@@ -135,7 +136,7 @@ Compare the signed-in user's Instagram followers and following lists, show who d
 `https://www.instagram.com/*`
 
 ```text
-Runs the in-page panel on instagram.com and sends the requests that load the user's own followers/following lists, profile counts, and single follow/unfollow actions when the user clicks them. Requests use the user's existing signed-in session in that tab. Nothing is sent anywhere else.
+Runs the in-page panel on instagram.com and sends the requests that load the followers/following lists of the user's own account (or of an account they type in and check), and single follow/unfollow actions when the user clicks them. Requests use the user's existing signed-in session in that tab. Nothing is sent anywhere else.
 ```
 
 `https://*.cdninstagram.com/*`
@@ -156,9 +157,9 @@ Some Instagram profile photos are served from Meta's fbcdn.net CDN. Used only fo
 
 **Data usage.** Tick exactly these:
 
-- [x] **Personally identifiable information**: usernames, display names and account IDs of the user and of the accounts in their lists
+- [x] **Personally identifiable information**: usernames, display names and account IDs of the user, of an account they choose to check, and of the accounts in those lists
 - [x] **Authentication information**: the extension reads Instagram's CSRF token cookie in the tab to authorise requests on the user's behalf. It never sees or stores passwords
-- [x] **Website content**: follower/following lists, profile photos and counts loaded from instagram.com
+- [x] **Website content**: follower/following lists, profile photos, and the checked account's follower/following totals, loaded from instagram.com
 
 Leave unticked: Health, Financial and payment, Personal communications, Location, Web history, User activity.
 
@@ -180,10 +181,11 @@ Fill in the test account's username and password in the credential fields, and p
 This extension works only on https://www.instagram.com/ while signed in. It has no login of its own. Please use the test account provided (a dedicated test account, not a real person's).
 
 1. Install the package, open https://www.instagram.com/ and sign in with the test account. Dismiss any "save login info" or notifications prompts.
-2. Click the extension's toolbar icon → "Open panel". (Alternatively, click the "Follow Check" button at the top right of the page.)
+2. Click the Follow Check icon at the top right of the page (or the extension's toolbar icon → "Scan my own account").
 3. Read the disclosure text and click "Scan my lists". Followers and following load within a few seconds.
 4. Switch between "Don't follow you", "You don't follow", "Follow back", "Followers" and "Following". Try the Verified filter and the search box.
 5. Optional: "Remove" unfollows that single account; "Follow back" follows that single account; "Export CSV" downloads the results.
+6. To check another account: click the extension's toolbar icon, type the username of any small public account (accounts with more than 20,000 followers are refused on purpose) and click "Check". The panel shows who that account follows back, who doesn't follow it back, and its mutuals. Remove / Follow back are not shown for other accounts.
 
 No data is sent to any server other than Instagram, and nothing is stored after the tab is closed.
 ```
