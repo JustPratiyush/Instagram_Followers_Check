@@ -10,6 +10,11 @@
     "dev";
   var SOURCE = "ig-follow-check-bridge";
   var APP_ID = "936619743392459";
+  // Checking someone else downloads their whole lists; past this it's too slow and
+  // Instagram starts refusing requests, so we say so up front instead.
+  var MAX_OTHER_LIST = 20000;
+  // A newer scan (e.g. the user checks another username) stops the older one.
+  var activeScanId = 0;
 
   // Replace handler on updates so extension reloads pick up new bridge code.
   if (!window.__IGFC_BRIDGE_LISTENING__) {
@@ -106,7 +111,9 @@
 
     if (!res.ok) {
       var snippet = text ? ": " + text.slice(0, 160) : "";
-      throw new Error("HTTP " + res.status + " for " + url + snippet);
+      var httpError = new Error("HTTP " + res.status + " for " + url + snippet);
+      httpError.status = res.status;
+      throw httpError;
     }
 
     if (
@@ -127,23 +134,6 @@
     return data == null
       ? { __raw: text, __empty: !text, __url: res.url, __redirected: res.redirected }
       : data;
-  }
-
-  // Short, human-readable reason for a failed count lookup (shown in the panel).
-  function describeCountsFailure(err, response) {
-    if (err) {
-      return String((err && err.message) || err).replace(
-        / for https:\/\/\S+?(?=: |$)/,
-        ""
-      );
-    }
-    if (response && response.__redirected && /\/accounts\/login\//.test(response.__url)) {
-      return "Instagram redirected to its login page";
-    }
-    if (response && response.__raw != null) {
-      return response.__empty ? "empty response" : "got a web page instead of data";
-    }
-    return "no follower counts in the response";
   }
 
   function pickProfilePic(u) {
@@ -318,67 +308,6 @@
     };
   }
 
-  function extractCounts(user) {
-    if (!user) return null;
-    var followers =
-      user.follower_count != null
-        ? user.follower_count
-        : user.edge_followed_by && user.edge_followed_by.count != null
-          ? user.edge_followed_by.count
-          : null;
-    var following =
-      user.following_count != null
-        ? user.following_count
-        : user.edge_follow && user.edge_follow.count != null
-          ? user.edge_follow.count
-          : null;
-    if (followers == null && following == null) return null;
-    return {
-      follower_count: followers == null ? null : Number(followers),
-      following_count: following == null ? null : Number(following),
-      is_verified:
-        user.is_verified != null ? Boolean(user.is_verified) : undefined,
-    };
-  }
-
-  async function fetchUserCounts(userId, username) {
-    // Same two lookups as before; we just keep each one's reason if it fails.
-    var reasons = [];
-
-    if (userId) {
-      try {
-        var info = await igFetch(
-          "https://www.instagram.com/api/v1/users/" + userId + "/info/"
-        );
-        var fromInfo = extractCounts(info && info.user);
-        if (fromInfo) return fromInfo;
-        reasons.push("user info: " + describeCountsFailure(null, info));
-      } catch (err) {
-        reasons.push("user info: " + describeCountsFailure(err));
-      }
-    }
-
-    if (username) {
-      try {
-        var profile = await igFetch(
-          "https://www.instagram.com/api/v1/users/web_profile_info/?username=" +
-            encodeURIComponent(username)
-        );
-        var fromProfile = extractCounts(
-          profile && profile.data && profile.data.user
-        );
-        if (fromProfile) return fromProfile;
-        reasons.push("profile info: " + describeCountsFailure(null, profile));
-      } catch (err) {
-        reasons.push("profile info: " + describeCountsFailure(err));
-      }
-    }
-
-    throw new Error(
-      reasons.join(" · ") || "Could not load counts for @" + (username || userId)
-    );
-  }
-
   async function resolveViewer() {
     var dsUserId = getCookie("ds_user_id");
     if (!dsUserId) {
@@ -397,6 +326,7 @@
           userId: String(dsUserId),
           username: form.username,
           full_name: form.first_name || "",
+          isSelf: true,
         };
       }
     } catch (err) {
@@ -413,6 +343,7 @@
           userId: String(user.pk || dsUserId),
           username: user.username,
           full_name: user.full_name || "",
+          isSelf: true,
         };
       }
     } catch (err) {
@@ -438,16 +369,121 @@
         "Could not detect your Instagram username. Open your profile once, then retry."
       );
     }
-    return { userId: String(dsUserId), username: username, full_name: "" };
+    return {
+      userId: String(dsUserId),
+      username: username,
+      full_name: "",
+      isSelf: true,
+    };
   }
 
-  async function fetchFriendshipList(userId, kind, onProgress) {
+  function formatNumber(n) {
+    return Number(n).toLocaleString("en-US");
+  }
+
+  function profileTotals(user) {
+    return {
+      followerCount:
+        user && user.edge_followed_by && user.edge_followed_by.count != null
+          ? Number(user.edge_followed_by.count)
+          : null,
+      followingCount:
+        user && user.edge_follow && user.edge_follow.count != null
+          ? Number(user.edge_follow.count)
+          : null,
+    };
+  }
+
+  async function resolveAccount(username) {
+    if (!username) {
+      var viewer = await resolveViewer();
+      // Your own totals only drive the progress display, so a failed lookup is fine.
+      try {
+        var own = await igFetch(
+          "https://www.instagram.com/api/v1/users/web_profile_info/?username=" +
+            encodeURIComponent(viewer.username)
+        );
+        var ownTotals = profileTotals(own && own.data && own.data.user);
+        viewer.followerCount = ownTotals.followerCount;
+        viewer.followingCount = ownTotals.followingCount;
+      } catch (_) {}
+      return viewer;
+    }
+
+    var dsUserId = getCookie("ds_user_id");
+    if (!dsUserId) {
+      throw new Error(
+        "Not logged in. Sign in to Instagram in this tab, then check @" +
+          username +
+          " again."
+      );
+    }
+
+    var profile = null;
+    try {
+      profile = await igFetch(
+        "https://www.instagram.com/api/v1/users/web_profile_info/?username=" +
+          encodeURIComponent(username)
+      );
+    } catch (err) {
+      if (err && err.status === 404) {
+        throw new Error("No Instagram account is called @" + username + ".");
+      }
+      throw err;
+    }
+    var user = profile && profile.data && profile.data.user;
+    if (!user || !user.id) {
+      throw new Error("No Instagram account is called @" + username + ".");
+    }
+
+    var isSelf = String(user.id) === String(dsUserId);
+    var totals = profileTotals(user);
+    var followerCount = totals.followerCount;
+    var followingCount = totals.followingCount;
+
+    if (!isSelf && user.is_private && !user.followed_by_viewer) {
+      throw new Error(
+        "@" +
+          user.username +
+          " is private. You can only check private accounts that you follow."
+      );
+    }
+    if (
+      !isSelf &&
+      ((followerCount || 0) > MAX_OTHER_LIST ||
+        (followingCount || 0) > MAX_OTHER_LIST)
+    ) {
+      throw new Error(
+        "@" +
+          user.username +
+          " has " +
+          formatNumber(followerCount || 0) +
+          " followers and follows " +
+          formatNumber(followingCount || 0) +
+          ". That's too many to check: accounts up to " +
+          formatNumber(MAX_OTHER_LIST) +
+          " followers and following work."
+      );
+    }
+
+    return {
+      userId: String(user.id),
+      username: user.username,
+      full_name: user.full_name || "",
+      isSelf: isSelf,
+      followerCount: followerCount,
+      followingCount: followingCount,
+    };
+  }
+
+  async function fetchFriendshipList(requestId, userId, kind, onProgress) {
     var collected = [];
     var seen = {};
     var maxId = null;
     var page = 0;
 
     do {
+      if (activeScanId !== requestId) throw new Error("Scan replaced by a newer one.");
       page += 1;
       var params = new URLSearchParams({
         count: "200",
@@ -501,18 +537,23 @@
     window.postMessage(payload, "*");
   }
 
-  async function runScan(requestId) {
-    var viewer = await resolveViewer();
+  async function runScan(requestId, username) {
+    activeScanId = requestId;
+    var account = await resolveAccount(username);
     post({
       type: "progress",
       requestId: requestId,
       stage: "viewer",
-      message: "Signed in as @" + viewer.username,
-      viewer: viewer,
+      message: account.isSelf
+        ? "Signed in as @" + account.username
+        : "Found @" + account.username,
+      account: account,
     });
 
     var followersLoaded = 0;
     var followingLoaded = 0;
+    var followersDone = false;
+    var followingDone = false;
 
     function emitListsProgress() {
       post({
@@ -525,9 +566,11 @@
           " followers, " +
           followingLoaded +
           " following",
-        viewer: viewer,
+        account: account,
         followersLoaded: followersLoaded,
         followingLoaded: followingLoaded,
+        followersDone: followersDone,
+        followingDone: followingDone,
         loaded: followersLoaded + followingLoaded,
       });
     }
@@ -537,7 +580,7 @@
       requestId: requestId,
       stage: "lists",
       message: "Loading followers and following in parallel…",
-      viewer: viewer,
+      account: account,
       followersLoaded: 0,
       followingLoaded: 0,
     });
@@ -545,12 +588,14 @@
     // Two workers: followers + following at the same time.
     // Pages inside each list stay sequential (Instagram cursor pagination).
     var lists = await Promise.all([
-      fetchFriendshipList(viewer.userId, "followers", function (p) {
+      fetchFriendshipList(requestId, account.userId, "followers", function (p) {
         followersLoaded = p.loaded;
+        followersDone = !p.hasMore;
         emitListsProgress();
       }),
-      fetchFriendshipList(viewer.userId, "following", function (p) {
+      fetchFriendshipList(requestId, account.userId, "following", function (p) {
         followingLoaded = p.loaded;
+        followingDone = !p.hasMore;
         emitListsProgress();
       }),
     ]);
@@ -561,7 +606,7 @@
     post({
       type: "result",
       requestId: requestId,
-      viewer: viewer,
+      account: account,
       followers: followers,
       following: following,
     });
@@ -578,7 +623,7 @@
     }
 
     if (data.type === "scan") {
-      runScan(data.requestId).catch(function (err) {
+      runScan(data.requestId, data.username || "").catch(function (err) {
         post({
           type: "error",
           requestId: data.requestId,
@@ -613,32 +658,6 @@
           });
         });
       return;
-    }
-
-    if (data.type === "userCounts") {
-      fetchUserCounts(data.userId, data.username)
-        .then(function (counts) {
-          post({
-            type: "userCountsResult",
-            requestId: data.requestId,
-            ok: true,
-            userId: data.userId,
-            username: data.username,
-            follower_count: counts.follower_count,
-            following_count: counts.following_count,
-            is_verified: counts.is_verified,
-          });
-        })
-        .catch(function (err) {
-          post({
-            type: "userCountsResult",
-            requestId: data.requestId,
-            ok: false,
-            userId: data.userId,
-            username: data.username,
-            message: (err && err.message) || String(err),
-          });
-        });
     }
   };
 

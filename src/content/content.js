@@ -12,7 +12,10 @@
     activeTab: "notFollowingBack",
     verifiedFilter: "all",
     query: "",
-    viewer: null,
+    // Whose lists are shown: { username, userId, isSelf, followerCount, ... }.
+    account: null,
+    // Username being scanned ("" = your own lists) while a scan runs.
+    scanUsername: "",
     followers: [],
     following: [],
     comparison: null,
@@ -22,19 +25,13 @@
     scanStage: "",
     followersLoaded: 0,
     followingLoaded: 0,
+    followersDone: false,
+    followingDone: false,
     progressPct: 0,
-    detailsRequestId: 0,
   };
 
   var avatarCache = {};
   var avatarInflight = {};
-  var DETAILS_WORKERS = 32;
-  var detailsCache = {};
-  var detailsQueue = [];
-  var detailsQueued = {};
-  var detailsInFlight = 0;
-  var detailsLastError = "";
-  var detailsLoggedErrors = {};
 
   function compareLists(followers, following) {
     var followerMap = {};
@@ -85,15 +82,6 @@
     };
   }
 
-  function formatCount(n) {
-    if (n == null || isNaN(n)) return "—";
-    var num = Number(n);
-    if (num < 1000) return String(num);
-    if (num < 10000) return (num / 1000).toFixed(1).replace(/\.0$/, "") + "K";
-    if (num < 1000000) return Math.round(num / 1000) + "K";
-    return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
-  }
-
   function activeBaseList() {
     if (!state.comparison) return [];
     if (state.activeTab === "followers") return state.followers;
@@ -124,172 +112,6 @@
         (u.full_name || "").toLowerCase().indexOf(state.query) !== -1
       );
     });
-  }
-
-  function applyDetailsToUser(user, details) {
-    if (!user || !details) return;
-    if (details.follower_count != null) user.follower_count = details.follower_count;
-    if (details.following_count != null) {
-      user.following_count = details.following_count;
-    }
-    if (details.is_verified != null) user.is_verified = details.is_verified;
-  }
-
-  function patchCountCells(userId, details) {
-    var nodes = document.querySelectorAll(
-      '#igfc-root [data-igfc-pk="' + userId + '"]'
-    );
-    for (var i = 0; i < nodes.length; i++) {
-      var node = nodes[i];
-      var kind = node.getAttribute("data-igfc-kind");
-      if (kind === "followers") {
-        node.textContent = formatCount(details.follower_count);
-      } else if (kind === "following") {
-        node.textContent = formatCount(details.following_count);
-      }
-    }
-  }
-
-  function enqueueUserDetails(list) {
-    if (!list || !list.length) return;
-    for (var i = 0; i < list.length; i++) {
-      var user = list[i];
-      var key = String(user.pk || "");
-      if (!key) continue;
-      if (detailsCache[key] && detailsCache[key].ok) {
-        applyDetailsToUser(user, detailsCache[key]);
-        continue;
-      }
-      if (detailsQueued[key] || (detailsCache[key] && detailsCache[key].loading)) {
-        continue;
-      }
-      detailsQueued[key] = true;
-      detailsCache[key] = { loading: true };
-      detailsQueue.push({
-        userId: key,
-        username: user.username,
-      });
-    }
-    pumpDetailsQueue();
-    renderDetailsProgress();
-  }
-
-  function getDetailsProgress(list) {
-    list = list || (hasResults() && !state.scanning ? getVisibleList() : []);
-    var total = list.length;
-    var done = 0;
-    var failed = 0;
-    for (var i = 0; i < list.length; i++) {
-      var cached = detailsCache[String(list[i].pk || "")];
-      if (cached && !cached.loading && cached.ok != null) done += 1;
-      if (cached && cached.ok === false) failed += 1;
-    }
-    var active = detailsInFlight > 0 || detailsQueue.length > 0;
-    return {
-      total: total,
-      done: done,
-      failed: failed,
-      active: active && done < total,
-      pct: total ? Math.round((done / total) * 100) : 0,
-    };
-  }
-
-  function renderDetailsProgress() {
-    if (!refs.countsProgress) return;
-    var ready = hasResults() && !state.scanning;
-    if (!ready) {
-      refs.countsProgress.classList.add("igfc-hidden");
-      return;
-    }
-
-    var progress = getDetailsProgress();
-    if (!progress.active && progress.done >= progress.total) {
-      // Finished: if Instagram refused some lookups, say why instead of leaving blanks.
-      if (progress.failed > 0 && detailsLastError) {
-        refs.countsProgress.classList.remove("igfc-hidden");
-        refs.countsProgress.classList.add("igfc-counts-error");
-        refs.countsProgressLabel.textContent =
-          "Couldn't load counts for " +
-          progress.failed +
-          " of " +
-          progress.total +
-          ". Instagram's answer — " +
-          detailsLastError;
-        return;
-      }
-      refs.countsProgress.classList.add("igfc-hidden");
-      return;
-    }
-
-    refs.countsProgress.classList.remove("igfc-hidden");
-    refs.countsProgress.classList.remove("igfc-counts-error");
-    refs.countsProgressBar.style.width = Math.max(4, progress.pct) + "%";
-    refs.countsProgressLabel.textContent =
-      "Loading counts " + progress.done + "/" + progress.total;
-  }
-
-  function pumpDetailsQueue() {
-    injectBridge();
-    while (detailsInFlight < DETAILS_WORKERS && detailsQueue.length > 0) {
-      var next = detailsQueue.shift();
-      if (!next) break;
-      detailsInFlight += 1;
-      state.detailsRequestId += 1;
-      postToBridge({
-        type: "userCounts",
-        requestId: state.detailsRequestId,
-        userId: next.userId,
-        username: next.username,
-      });
-    }
-  }
-
-  function noteDetailsError(message) {
-    if (!message) return;
-    detailsLastError = message;
-    if (!detailsLoggedErrors[message]) {
-      detailsLoggedErrors[message] = true;
-      console.warn("[Follow Check] Couldn't load counts: " + message);
-    }
-  }
-
-  function onUserCountsResult(data) {
-    var key = String(data.userId || "");
-    delete detailsQueued[key];
-    detailsInFlight = Math.max(0, detailsInFlight - 1);
-
-    if (!data.ok) {
-      detailsCache[key] = { ok: false, loading: false, error: data.message || "" };
-      noteDetailsError(data.message);
-      var failNodes = document.querySelectorAll(
-        '#igfc-root [data-igfc-pk="' + key + '"]'
-      );
-      for (var i = 0; i < failNodes.length; i++) {
-        failNodes[i].textContent = "—";
-        failNodes[i].title = data.message || "";
-      }
-    } else {
-      var details = {
-        ok: true,
-        loading: false,
-        follower_count: data.follower_count,
-        following_count: data.following_count,
-        is_verified: data.is_verified,
-      };
-      detailsCache[key] = details;
-
-      function touch(list) {
-        for (var j = 0; j < list.length; j++) {
-          if (String(list[j].pk) === key) applyDetailsToUser(list[j], details);
-        }
-      }
-      touch(state.followers);
-      touch(state.following);
-      patchCountCells(key, details);
-    }
-
-    renderDetailsProgress();
-    pumpDetailsQueue();
   }
 
   function injectBridge() {
@@ -335,9 +157,15 @@
     var fab = el("button", "igfc-fab", {
       type: "button",
       title: "Follow Check for Instagram",
+      "aria-label": "Open Follow Check",
     });
-    fab.appendChild(el("span", "igfc-fab-dot"));
-    fab.appendChild(document.createTextNode("Follow Check"));
+    fab.appendChild(
+      el("img", "igfc-fab-icon", {
+        src: chrome.runtime.getURL("icons/icon128.png"),
+        alt: "",
+        draggable: "false",
+      })
+    );
     fab.addEventListener("click", function () {
       setOpen(true);
     });
@@ -350,8 +178,22 @@
     var panel = el("div", "igfc-panel igfc-hidden");
 
     var header = el("div", "igfc-header");
-    header.appendChild(
-      el("h1", "igfc-title", { text: "Follow Check for Instagram" })
+    var titleWrap = el("div", "igfc-title-wrap");
+    var title = el("h1", "igfc-title", { text: "Follow Check for Instagram" });
+    var status = el("div", "igfc-status");
+    titleWrap.appendChild(title);
+    titleWrap.appendChild(status);
+    header.appendChild(titleWrap);
+
+    // Stays in the header next to the results, so you can check someone else
+    // without going back to the start screen.
+    var headerCheck = buildCheckForm(
+      "igfc-header-check",
+      "Check another account",
+      function () {
+        state.status = "Enter an Instagram username, like natgeo.";
+        renderChrome();
+      }
     );
 
     var actions = el("div", "igfc-actions");
@@ -359,23 +201,24 @@
       type: "button",
       text: "Scan my lists",
     });
-    scanBtn.addEventListener("click", startScan);
+    scanBtn.addEventListener("click", function () {
+      startScan("");
+    });
     var exportBtn = el("button", "igfc-btn", {
       type: "button",
       text: "Export CSV",
     });
     exportBtn.addEventListener("click", exportCsv);
+    actions.appendChild(headerCheck);
     actions.appendChild(scanBtn);
     actions.appendChild(exportBtn);
 
-    var status = el("div", "igfc-status");
     var closeBtn = el("button", "igfc-close", { type: "button", text: "×" });
     closeBtn.addEventListener("click", function () {
       setOpen(false);
     });
 
     header.appendChild(actions);
-    header.appendChild(status);
     header.appendChild(closeBtn);
 
     var progress = el("div", "igfc-progress igfc-hidden");
@@ -395,17 +238,7 @@
     });
     searchRow.appendChild(search);
 
-    var countsProgress = el("div", "igfc-counts-progress igfc-hidden");
-    var countsProgressMeta = el("div", "igfc-counts-progress-meta");
-    var countsProgressLabel = el("span", "igfc-counts-progress-label", {
-      text: "Loading counts…",
-    });
-    countsProgressMeta.appendChild(countsProgressLabel);
-    var countsProgressTrack = el("div", "igfc-counts-progress-track");
-    var countsProgressBar = el("i", "igfc-counts-progress-bar");
-    countsProgressTrack.appendChild(countsProgressBar);
-    countsProgress.appendChild(countsProgressMeta);
-    countsProgress.appendChild(countsProgressTrack);
+    var notice = el("div", "igfc-notice igfc-hidden");
 
     var body = el("div", "igfc-body");
 
@@ -414,7 +247,7 @@
     panel.appendChild(stats);
     panel.appendChild(subfilters);
     panel.appendChild(searchRow);
-    panel.appendChild(countsProgress);
+    panel.appendChild(notice);
     panel.appendChild(body);
 
     root.appendChild(fab);
@@ -426,6 +259,7 @@
       fab: fab,
       backdrop: backdrop,
       panel: panel,
+      title: title,
       progress: progress,
       progressBar: progressBar,
       actions: actions,
@@ -436,9 +270,7 @@
       subfilters: subfilters,
       searchRow: searchRow,
       search: search,
-      countsProgress: countsProgress,
-      countsProgressBar: countsProgressBar,
-      countsProgressLabel: countsProgressLabel,
+      notice: notice,
       body: body,
     };
 
@@ -457,23 +289,65 @@
     });
   }
 
-  function startScan() {
-    if (state.scanning) return;
+  function normalizeUsername(raw) {
+    var value = String(raw || "").trim();
+    var fromUrl = value.match(/instagram\.com\/([^/?#\s]+)/i);
+    if (fromUrl) value = fromUrl[1];
+    value = value.replace(/^@+/, "").toLowerCase();
+    return /^[a-z0-9._]{1,30}$/.test(value) ? value : "";
+  }
+
+  function isOwnLists() {
+    return !state.account || Boolean(state.account.isSelf);
+  }
+
+  // "" for your own lists, otherwise the checked username; null before any scan.
+  function shownUsername() {
+    if (!state.comparison || !state.account) return null;
+    return state.account.isSelf ? "" : state.account.username.toLowerCase();
+  }
+
+  function startScan(username) {
+    username = username || "";
+    // Same scan already running: nothing to do. A different one replaces it.
+    if (state.scanning && state.scanUsername === username) return;
     injectBridge();
+    if (shownUsername() !== username) {
+      // Different account: its old results would only mislead.
+      state.comparison = null;
+      state.followers = [];
+      state.following = [];
+      state.account = null;
+      state.activeTab = "notFollowingBack";
+      state.verifiedFilter = "all";
+      state.query = "";
+      if (refs.search) refs.search.value = "";
+    }
     state.scanning = true;
+    state.scanUsername = username;
     state.error = "";
-    state.status = "Connecting…";
+    state.status = username ? "Looking up @" + username + "…" : "Connecting…";
     state.scanStage = "viewer";
     state.followersLoaded = 0;
     state.followingLoaded = 0;
+    state.followersDone = false;
+    state.followingDone = false;
     state.progressPct = 4;
     state.requestId += 1;
     var requestId = state.requestId;
     renderAll();
 
     setTimeout(function () {
-      postToBridge({ type: "scan", requestId: requestId });
+      postToBridge({ type: "scan", requestId: requestId, username: username });
     }, 60);
+  }
+
+  // followers + following as the profile reports them, or 0 if unknown.
+  function knownTotal(account) {
+    if (!account || account.followerCount == null || account.followingCount == null) {
+      return 0;
+    }
+    return account.followerCount + account.followingCount;
   }
 
   function estimateProgress(stage, data) {
@@ -481,6 +355,11 @@
     if (stage === "lists") {
       var followers = (data && data.followersLoaded) || 0;
       var following = (data && data.followingLoaded) || 0;
+      var total = knownTotal(data && data.account);
+      // With the profile's totals we can show real progress.
+      if (total > 0) {
+        return Math.min(99, Math.floor(((followers + following) / total) * 100));
+      }
       return Math.min(
         96,
         12 + Math.floor(followers / 6) + Math.floor(following / 6)
@@ -501,11 +380,6 @@
     if (!data || data.source !== BRIDGE_SOURCE) return;
 
     if (data.type === "ready") {
-      return;
-    }
-
-    if (data.type === "userCountsResult") {
-      onUserCountsResult(data);
       return;
     }
 
@@ -538,7 +412,7 @@
 
     if (data.type === "progress") {
       state.status = data.message || "Working…";
-      if (data.viewer) state.viewer = data.viewer;
+      if (data.account) state.account = data.account;
       if (data.stage) state.scanStage = data.stage;
       if (typeof data.followersLoaded === "number") {
         state.followersLoaded = data.followersLoaded;
@@ -549,6 +423,12 @@
         state.followingLoaded = data.followingLoaded;
       } else if (data.stage === "following" && typeof data.loaded === "number") {
         state.followingLoaded = data.loaded;
+      }
+      if (typeof data.followersDone === "boolean") {
+        state.followersDone = data.followersDone;
+      }
+      if (typeof data.followingDone === "boolean") {
+        state.followingDone = data.followingDone;
       }
       if (typeof data.followersCount === "number") {
         state.followersLoaded = data.followersCount;
@@ -573,7 +453,7 @@
 
     if (data.type === "result") {
       state.scanning = false;
-      state.viewer = data.viewer;
+      state.account = data.account;
       state.followers = data.followers || [];
       state.following = data.following || [];
       state.followersLoaded = state.followers.length;
@@ -582,8 +462,8 @@
       state.comparison = compareLists(state.followers, state.following);
       state.status =
         "Done for @" +
-        (state.viewer && state.viewer.username
-          ? state.viewer.username
+        (state.account && state.account.username
+          ? state.account.username
           : "you") +
         ".";
       state.error = "";
@@ -674,29 +554,62 @@
     return Boolean(state.comparison);
   }
 
+  function formatNumber(n) {
+    return Number(n).toLocaleString("en-US");
+  }
+
+  // Instagram can hand back fewer people than a profile's counts say (hidden or
+  // deactivated accounts, or it stopped paging). Say so when the gap is real.
+  function incompleteListsNotice() {
+    var account = state.account;
+    if (!hasResults() || state.scanning || !account || account.isSelf) return "";
+    var gaps = [];
+    [
+      ["followers", state.followers.length, account.followerCount],
+      ["following", state.following.length, account.followingCount],
+    ].forEach(function (item) {
+      var loaded = item[1];
+      var reported = item[2];
+      if (reported == null) return;
+      if (reported - loaded > Math.max(5, reported * 0.05)) {
+        gaps.push(formatNumber(loaded) + " of " + formatNumber(reported) + " " + item[0]);
+      }
+    });
+    if (!gaps.length) return "";
+    return (
+      "Instagram only returned " +
+      gaps.join(" and ") +
+      " for @" +
+      account.username +
+      ", so these lists may be incomplete."
+    );
+  }
+
   function renderChrome() {
     ensureUi();
     var ready = hasResults();
+    refs.title.textContent =
+      ready && !isOwnLists()
+        ? "Follow Check · @" + state.account.username
+        : "Follow Check for Instagram";
     refs.actions.classList.toggle("igfc-hidden", !ready);
-    refs.status.classList.toggle("igfc-hidden", !ready && !state.scanning);
+    // While scanning, the loader in the body already says what's happening.
+    refs.status.classList.toggle("igfc-hidden", !ready || state.scanning);
     refs.stats.classList.toggle("igfc-hidden", !ready);
     refs.searchRow.classList.toggle("igfc-hidden", !ready);
     renderSubfilters();
-    renderDetailsProgress();
+    var notice = incompleteListsNotice();
+    refs.notice.textContent = notice;
+    refs.notice.classList.toggle("igfc-hidden", !notice);
     refs.scanBtn.disabled = state.scanning;
     refs.exportBtn.disabled = !ready;
     refs.scanBtn.textContent = state.scanning ? "Scanning…" : "Scan my lists";
     refs.status.textContent = state.status;
 
     refs.progress.classList.toggle("igfc-hidden", !state.scanning);
-    refs.progress.classList.toggle("igfc-progress-active", state.scanning);
-    if (state.scanning) {
-      refs.progressBar.style.width = Math.max(6, state.progressPct) + "%";
-      refs.progressBar.classList.add("igfc-progress-fill");
-    } else {
-      refs.progressBar.style.width = "";
-      refs.progressBar.classList.remove("igfc-progress-fill");
-    }
+    refs.progressBar.style.width = state.scanning
+      ? Math.max(4, state.progressPct) + "%"
+      : "";
   }
 
   function renderStats() {
@@ -706,10 +619,19 @@
     }
 
     var counts = state.comparison.counts;
+    var who = isOwnLists() ? "" : "@" + state.account.username;
     var items = [
-      ["notFollowingBack", "Don't follow you", counts.notFollowingBack],
-      ["notFollowedBack", "You don't follow", counts.notFollowedBack],
-      ["mutual", "Follow back", counts.mutual],
+      [
+        "notFollowingBack",
+        who ? "Don't follow " + who + " back" : "Don't follow you",
+        counts.notFollowingBack,
+      ],
+      [
+        "notFollowedBack",
+        who ? who + " doesn't follow back" : "You don't follow",
+        counts.notFollowedBack,
+      ],
+      ["mutual", who ? "Mutuals" : "Follow back", counts.mutual],
       ["followers", "Followers", counts.followers],
       ["following", "Following", counts.following],
     ];
@@ -897,6 +819,50 @@
     return null;
   }
 
+  function buildCheckForm(className, placeholder, onInvalid) {
+    var form = el("form", "igfc-check-form " + className, { novalidate: "" });
+    var field = el("label", "igfc-check-field");
+    field.appendChild(el("span", "igfc-check-at", { text: "@" }));
+    var input = el("input", "igfc-check-input", {
+      type: "text",
+      placeholder: placeholder,
+      autocomplete: "off",
+      autocapitalize: "off",
+      spellcheck: "false",
+      maxlength: "100",
+      "aria-label": "Instagram username to check",
+    });
+    field.appendChild(input);
+    form.appendChild(field);
+    form.appendChild(el("button", "igfc-btn", { type: "submit", text: "Check" }));
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var username = normalizeUsername(input.value);
+      if (!username) {
+        onInvalid();
+        input.focus();
+        return;
+      }
+      input.value = "";
+      startScan(username);
+    });
+    return form;
+  }
+
+  function renderCheckForm() {
+    var hint = el("p", "igfc-check-hint", {
+      text: "Works for public accounts, and private ones you follow.",
+    });
+    var form = buildCheckForm("", "username", function () {
+      hint.textContent = "Enter an Instagram username, like natgeo.";
+      hint.classList.add("igfc-check-hint-error");
+    });
+    var wrap = el("div", "igfc-check");
+    wrap.appendChild(form);
+    wrap.appendChild(hint);
+    return wrap;
+  }
+
   function renderHeroScan() {
     var wrap = el("div", "igfc-hero");
     wrap.appendChild(
@@ -904,82 +870,233 @@
         text: "Load your followers and following from this logged-in session.",
       })
     );
-    wrap.appendChild(
-      el("p", "igfc-hero-disclosure", {
-        text: "By scanning, you allow this unofficial extension to read your follower and following lists from your existing Instagram session. The comparison runs only in this tab: nothing is sent to the developer or saved after you close it. No passwords are collected. Not affiliated with Instagram or Meta.",
-      })
-    );
     var heroBtn = el("button", "igfc-btn igfc-btn-primary igfc-hero-btn", {
       type: "button",
       text: "Scan my lists",
     });
-    heroBtn.addEventListener("click", startScan);
+    heroBtn.addEventListener("click", function () {
+      startScan("");
+    });
     wrap.appendChild(heroBtn);
+    wrap.appendChild(
+      el("p", "igfc-hero-divider", { text: "or check another account" })
+    );
+    wrap.appendChild(renderCheckForm());
+    wrap.appendChild(
+      el("p", "igfc-hero-disclosure", {
+        text: "By scanning, you allow this unofficial extension to read follower and following lists (yours, or the account you check) from your existing Instagram session. The comparison runs only in this tab: nothing is sent to the developer or saved after you close it. No passwords are collected. Not affiliated with Instagram or Meta.",
+      })
+    );
     refs.body.appendChild(wrap);
+  }
+
+  var SVG_NS = "http://www.w3.org/2000/svg";
+  var RING_RADIUS = 52;
+  var RING_LENGTH = 2 * Math.PI * RING_RADIUS;
+  var loader = null;
+
+  function svgEl(tag, attrs) {
+    var node = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach(function (key) {
+      node.setAttribute(key, attrs[key]);
+    });
+    return node;
+  }
+
+  function buildLoaderMeter(label) {
+    var card = el("div", "igfc-load-meter");
+    var head = el("div", "igfc-load-meter-head");
+    head.appendChild(el("span", "igfc-load-label", { text: label }));
+    var tag = el("span", "igfc-load-tag");
+    head.appendChild(tag);
+    var value = el("div", "igfc-load-value");
+    var count = el("strong");
+    var total = el("small");
+    value.appendChild(count);
+    value.appendChild(total);
+    var bar = el("div", "igfc-load-bar");
+    var fill = document.createElement("i");
+    bar.appendChild(fill);
+    card.appendChild(head);
+    card.appendChild(value);
+    card.appendChild(bar);
+    return { card: card, tag: tag, count: count, total: total, bar: bar, fill: fill };
+  }
+
+  function buildLoader() {
+    var wrap = el("div", "igfc-loader");
+
+    var ring = el("div", "igfc-loader-ring");
+    var svg = svgEl("svg", { viewBox: "0 0 120 120", "aria-hidden": "true" });
+    var defs = svgEl("defs", {});
+    var gradient = svgEl("linearGradient", {
+      id: "igfc-ring-gradient",
+      x1: "0",
+      y1: "0",
+      x2: "1",
+      y2: "1",
+    });
+    [
+      ["0%", "#feda75"],
+      ["35%", "#fa7e1e"],
+      ["65%", "#d62976"],
+      ["100%", "#962fbf"],
+    ].forEach(function (stop) {
+      gradient.appendChild(
+        svgEl("stop", { offset: stop[0], "stop-color": stop[1] })
+      );
+    });
+    defs.appendChild(gradient);
+    svg.appendChild(defs);
+    svg.appendChild(
+      svgEl("circle", { class: "igfc-ring-track", cx: "60", cy: "60", r: RING_RADIUS })
+    );
+    var arc = svgEl("circle", {
+      class: "igfc-ring-arc",
+      cx: "60",
+      cy: "60",
+      r: RING_RADIUS,
+      "stroke-dasharray": RING_LENGTH.toFixed(2),
+      "stroke-dashoffset": RING_LENGTH.toFixed(2),
+    });
+    svg.appendChild(arc);
+    ring.appendChild(svg);
+    ring.appendChild(
+      el("img", "igfc-loader-logo", {
+        src: chrome.runtime.getURL("icons/icon128.png"),
+        alt: "",
+      })
+    );
+    var pct = el("span", "igfc-loader-pct");
+    ring.appendChild(pct);
+    wrap.appendChild(ring);
+
+    var title = el("h2", "igfc-loading-title");
+    var sub = el("p", "igfc-loader-sub");
+    wrap.appendChild(title);
+    wrap.appendChild(sub);
+
+    var meters = el("div", "igfc-load-meters");
+    var followers = buildLoaderMeter("Followers");
+    var following = buildLoaderMeter("Following");
+    meters.appendChild(followers.card);
+    meters.appendChild(following.card);
+    wrap.appendChild(meters);
+
+    wrap.appendChild(
+      el("p", "igfc-loader-foot", {
+        text: "Keep this tab open. Big lists can take a minute.",
+      })
+    );
+
+    return {
+      root: wrap,
+      arc: arc,
+      pct: pct,
+      title: title,
+      sub: sub,
+      followers: followers,
+      following: following,
+    };
+  }
+
+  function updateLoaderMeter(meter, loaded, total, done, waiting) {
+    meter.count.textContent = formatNumber(loaded || 0);
+    meter.total.textContent = total != null ? " / " + formatNumber(total) : "";
+    meter.tag.textContent = done ? "✓ Done" : waiting ? "Waiting" : "Loading";
+    meter.tag.classList.toggle("igfc-done", done);
+    meter.tag.classList.toggle("igfc-waiting", waiting && !done);
+    var known = total != null && total > 0;
+    meter.bar.classList.toggle("igfc-indeterminate", !done && !known && !waiting);
+    meter.fill.style.width = done
+      ? "100%"
+      : known
+        ? Math.min(100, ((loaded || 0) / total) * 100) + "%"
+        : "0%";
   }
 
   function renderScanning() {
-    var wrap = el("div", "igfc-hero igfc-loading");
-    var spinner = el("div", "igfc-spinner");
-    spinner.appendChild(el("span"));
-    wrap.appendChild(spinner);
+    if (!loader) loader = buildLoader();
+    if (loader.root.parentNode !== refs.body) {
+      refs.body.innerHTML = "";
+      refs.body.appendChild(loader.root);
+    }
 
-    wrap.appendChild(
-      el("h2", "igfc-loading-title", { text: "Scanning your lists" })
-    );
-    wrap.appendChild(
-      el("p", "igfc-hero-copy", {
-        text: state.status || "Working…",
-      })
-    );
+    var account = state.account || {};
+    var listing = state.scanStage === "lists";
+    var total = knownTotal(account);
+    var determinate = listing && total > 0;
+    var ratio = determinate
+      ? Math.min(0.99, (state.followersLoaded + state.followingLoaded) / total)
+      : 0.28;
 
-    var meters = el("div", "igfc-load-meters");
-    var f = el("div", "igfc-load-meter");
-    f.appendChild(el("span", null, { text: "Followers" }));
-    f.appendChild(
-      el("strong", null, {
-        text: String(state.followersLoaded || 0),
-      })
+    loader.root.classList.toggle("igfc-loader-indeterminate", !determinate);
+    loader.arc.setAttribute(
+      "stroke-dashoffset",
+      (RING_LENGTH * (1 - ratio)).toFixed(2)
     );
-    var g = el("div", "igfc-load-meter");
-    g.appendChild(el("span", null, { text: "Following" }));
-    g.appendChild(
-      el("strong", null, {
-        text: String(state.followingLoaded || 0),
-      })
+    loader.pct.textContent = Math.round(ratio * 100) + "%";
+
+    var who = state.scanUsername ? "@" + state.scanUsername : "";
+    loader.title.textContent = who ? "Checking " + who : "Scanning your lists";
+    loader.sub.textContent = !listing
+      ? who
+        ? "Looking up " + who + "…"
+        : "Connecting to your Instagram…"
+      : state.followersDone && state.followingDone
+        ? "Comparing lists…"
+        : "Loading followers and following…";
+
+    updateLoaderMeter(
+      loader.followers,
+      state.followersLoaded,
+      account.followerCount,
+      state.followersDone,
+      !listing
     );
-    meters.appendChild(f);
-    meters.appendChild(g);
-    wrap.appendChild(meters);
-
-    var track = el("div", "igfc-load-track");
-    var fill = el("div", "igfc-load-fill");
-    fill.style.width = Math.max(6, state.progressPct) + "%";
-    track.appendChild(fill);
-    wrap.appendChild(track);
-
-    refs.body.appendChild(wrap);
+    updateLoaderMeter(
+      loader.following,
+      state.followingLoaded,
+      account.followingCount,
+      state.followingDone,
+      !listing
+    );
   }
 
   function renderTable() {
-    refs.body.innerHTML = "";
     var centered = state.scanning || Boolean(state.error) || !state.comparison;
     refs.body.classList.toggle("igfc-body-center", centered);
 
+    // The loader updates in place (not rebuilt) so its ring and bars animate.
     if (state.scanning) {
       renderScanning();
       return;
     }
+    refs.body.innerHTML = "";
 
     if (state.error) {
       var errWrap = el("div", "igfc-hero");
       errWrap.appendChild(el("div", "igfc-error", { text: state.error }));
+      var errActions = el("div", "igfc-hero-actions");
       var retry = el("button", "igfc-btn igfc-btn-primary igfc-hero-btn", {
         type: "button",
         text: "Try again",
       });
-      retry.addEventListener("click", startScan);
-      errWrap.appendChild(retry);
+      retry.addEventListener("click", function () {
+        startScan(state.scanUsername);
+      });
+      var back = el("button", "igfc-btn igfc-hero-btn", {
+        type: "button",
+        text: "Back",
+      });
+      back.addEventListener("click", function () {
+        state.error = "";
+        state.status = "Ready";
+        renderAll();
+      });
+      errActions.appendChild(retry);
+      errActions.appendChild(back);
+      errWrap.appendChild(errActions);
       refs.body.appendChild(errWrap);
       return;
     }
@@ -998,16 +1115,16 @@
       return;
     }
 
+    // Follow/unfollow only makes sense for your own lists, not someone you checked.
+    var showActions = isOwnLists();
     var table = el("table", "igfc-table");
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
-    var headers = ["#", "Account", "Name", "Followers", "Following", "Action"];
+    var headers = ["#", "Account", "Name"];
+    if (showActions) headers.push("Action");
     headers.forEach(function (label) {
       var th = el("th", null, { text: label });
       if (label === "#") th.className = "igfc-col-num";
-      if (label === "Followers" || label === "Following") {
-        th.className = "igfc-col-count";
-      }
       if (label === "Action") th.className = "igfc-col-action";
       headRow.appendChild(th);
     });
@@ -1016,9 +1133,6 @@
 
     var tbody = document.createElement("tbody");
     list.forEach(function (user, index) {
-      var cached = detailsCache[String(user.pk)] || null;
-      if (cached && cached.ok) applyDetailsToUser(user, cached);
-
       var tr = document.createElement("tr");
 
       var numTd = el("td", "igfc-col-num", { text: String(index + 1) });
@@ -1051,46 +1165,17 @@
 
       tr.appendChild(el("td", null, { text: user.full_name || "—" }));
 
-      var followersTd = el("td", "igfc-col-count", {
-        text:
-          user.follower_count != null
-            ? formatCount(user.follower_count)
-            : cached && cached.ok === false
-              ? "—"
-              : "…",
-      });
-      followersTd.setAttribute("data-igfc-pk", String(user.pk || ""));
-      followersTd.setAttribute("data-igfc-kind", "followers");
-      tr.appendChild(followersTd);
-
-      var followingTd = el("td", "igfc-col-count", {
-        text:
-          user.following_count != null
-            ? formatCount(user.following_count)
-            : cached && cached.ok === false
-              ? "—"
-              : "…",
-      });
-      followingTd.setAttribute("data-igfc-pk", String(user.pk || ""));
-      followingTd.setAttribute("data-igfc-kind", "following");
-      tr.appendChild(followingTd);
-      if (cached && cached.ok === false && cached.error) {
-        followersTd.title = cached.error;
-        followingTd.title = cached.error;
+      if (showActions) {
+        var actionTd = el("td", "igfc-col-action");
+        var btn = actionButtonFor(user);
+        if (btn) actionTd.appendChild(btn);
+        tr.appendChild(actionTd);
       }
-
-      var actionTd = el("td", "igfc-col-action");
-      var btn = actionButtonFor(user);
-      if (btn) actionTd.appendChild(btn);
-      tr.appendChild(actionTd);
 
       tbody.appendChild(tr);
     });
     table.appendChild(tbody);
     refs.body.appendChild(table);
-
-    enqueueUserDetails(list);
-    renderDetailsProgress();
   }
 
   function renderAll() {
@@ -1098,7 +1183,6 @@
     renderStats();
     renderSubfilters();
     renderTable();
-    renderDetailsProgress();
   }
 
   function csvEscape(value) {
@@ -1111,35 +1195,14 @@
 
   function exportCsv() {
     if (!state.comparison) return;
-    var rows = [
-      [
-        "category",
-        "username",
-        "full_name",
-        "verified",
-        "followers",
-        "following",
-        "profile_url",
-      ],
-    ];
+    var rows = [["category", "username", "full_name", "verified", "profile_url"]];
     function add(category, list) {
       list.forEach(function (u) {
-        var cached = detailsCache[String(u.pk)] || {};
         rows.push([
           category,
           u.username,
           u.full_name || "",
           u.is_verified ? "yes" : "no",
-          u.follower_count != null
-            ? u.follower_count
-            : cached.follower_count != null
-              ? cached.follower_count
-              : "",
-          u.following_count != null
-            ? u.following_count
-            : cached.following_count != null
-              ? cached.following_count
-              : "",
           "https://www.instagram.com/" + u.username + "/",
         ]);
       });
@@ -1162,7 +1225,7 @@
     a.href = url;
     a.download =
       "instagram-follow-check-" +
-      ((state.viewer && state.viewer.username) || "me") +
+      ((state.account && state.account.username) || "me") +
       ".csv";
     document.body.appendChild(a);
     a.click();
@@ -1176,6 +1239,9 @@
     if (message && message.type === "IGFC_OPEN") {
       ensureUi();
       setOpen(true);
+      // From the popup's username box: check that account straight away.
+      var username = normalizeUsername(message.username);
+      if (username) startScan(username);
       sendResponse({ ok: true });
       return false;
     }
@@ -1184,7 +1250,7 @@
         ok: true,
         scanning: state.scanning,
         hasResult: Boolean(state.comparison),
-        viewer: state.viewer,
+        account: state.account,
         counts: state.comparison && state.comparison.counts,
       });
       return false;
@@ -1192,7 +1258,7 @@
     return false;
   });
 
-  // Boot floating button on Instagram pages
+  // Boot floating icon button on Instagram pages
   function boot() {
     injectBridge();
     ensureUi();

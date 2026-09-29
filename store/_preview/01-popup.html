@@ -33,22 +33,33 @@
       <div class="frame">
         <main>
           <header>
-            <div>
+            <img class="brand-icon" src="../../icons/icon128.png" alt="" />
+            <div class="brand-text">
               <h1>Follow Check</h1>
-              <p>No passwords. Uses your logged-in Instagram tab.</p>
               <p class="disclaimer">Unofficial. Not affiliated with Instagram or Meta.</p>
             </div>
+            <span class="version">v1.5.0</span>
           </header>
-          <section class="card">
-            <p id="status">Instagram tab detected. Open the panel to scan followers & following.</p>
-            <div class="actions">
-              <button class="primary" type="button">Open panel</button>
-              <button type="button">Open Instagram</button>
+          <form class="card">
+            <label class="label" for="username">Username</label>
+            <p class="help">See who they follow back, who doesn't follow them, and their mutuals.</p>
+            <div class="field">
+              <span class="at">@</span>
+              <input id="username" type="text" value="maple.studio" readonly />
             </div>
+            <button class="primary" type="button">Check</button>
+          </form>
+          <section class="recent">
+            <h2>Recent</h2>
+            <ul>
+              <li><button class="recent-pick" type="button">@maple.studio</button><button class="recent-remove" type="button">×</button></li>
+              <li><button class="recent-pick" type="button">@northbeam</button><button class="recent-remove" type="button">×</button></li>
+            </ul>
           </section>
-          <figure class="logo">
-            <img src="../../icons/icon256.png" alt="" />
-          </figure>
+          <section class="own">
+            <button type="button">Scan my own account</button>
+            <p class="note">Works for public accounts, and private ones you follow. Uses your logged-in Instagram tab: no passwords, and nothing is sent to the developer or saved.</p>
+          </section>
         </main>
       </div>
     </div>

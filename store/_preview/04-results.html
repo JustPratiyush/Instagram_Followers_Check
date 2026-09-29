@@ -24,12 +24,18 @@
       <div class="igfc-backdrop igfc-open"></div>
       <div class="igfc-panel igfc-open">
         <div class="igfc-header">
-          <h1 class="igfc-title">Follow Check for Instagram</h1>
+          <div class="igfc-title-wrap">
+            <h1 class="igfc-title">Follow Check for Instagram</h1>
+            <div class="igfc-status">Done for @demo.account.</div>
+          </div>
           <div class="igfc-actions">
+            <form class="igfc-check-form igfc-header-check">
+              <label class="igfc-check-field"><span class="igfc-check-at">@</span><input class="igfc-check-input" type="text" placeholder="Check another account" readonly /></label>
+              <button class="igfc-btn" type="button">Check</button>
+            </form>
             <button class="igfc-btn igfc-btn-primary" type="button">Scan my lists</button>
             <button class="igfc-btn" type="button">Export CSV</button>
           </div>
-          <div class="igfc-status">Done for @demo.account</div>
           <button class="igfc-close" type="button">×</button>
         </div>
         <div class="igfc-stats">
@@ -48,14 +54,6 @@
         <div class="igfc-search-row">
           <input class="igfc-search" value="" placeholder="Search username or name…" readonly />
         </div>
-        <div class="igfc-counts-progress">
-          <div class="igfc-counts-progress-meta">
-            <span class="igfc-counts-progress-label">Loading counts 77/90</span>
-          </div>
-          <div class="igfc-counts-progress-track">
-            <i class="igfc-counts-progress-bar" style="width:85%; animation:none"></i>
-          </div>
-        </div>
         <div class="igfc-body">
           <table class="igfc-table">
             <thead>
@@ -63,8 +61,6 @@
                 <th class="igfc-col-num">#</th>
                 <th>Account</th>
                 <th>Name</th>
-                <th class="igfc-col-count">Followers</th>
-                <th class="igfc-col-count">Following</th>
                 <th class="igfc-col-action">Action</th>
               </tr>
             </thead>
@@ -73,40 +69,30 @@
                 <td class="igfc-col-num">1</td>
                 <td><div class="igfc-user"><span class="igfc-avatar-fallback">M</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@maple.studio</a></div></div></div></td>
                 <td>Jordan Lee</td>
-                <td class="igfc-col-count">540</td>
-                <td class="igfc-col-count">566</td>
                 <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
               </tr>
               <tr>
                 <td class="igfc-col-num">2</td>
                 <td><div class="igfc-user"><span class="igfc-avatar-fallback">N</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@northbeam</a><span class="igfc-verified">✓</span></div></div></div></td>
                 <td>Alex Rivera</td>
-                <td class="igfc-col-count">633K</td>
-                <td class="igfc-col-count">49</td>
                 <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
               </tr>
               <tr>
                 <td class="igfc-col-num">3</td>
                 <td><div class="igfc-user"><span class="igfc-avatar-fallback">Q</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@quiet.harbor</a></div></div></div></td>
                 <td>Sam Okonkwo</td>
-                <td class="igfc-col-count">854K</td>
-                <td class="igfc-col-count">82</td>
                 <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
               </tr>
               <tr>
                 <td class="igfc-col-num">4</td>
                 <td><div class="igfc-user"><span class="igfc-avatar-fallback">L</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@lumen.notes</a></div></div></div></td>
                 <td>Riley Chen</td>
-                <td class="igfc-col-count">12.4K</td>
-                <td class="igfc-col-count">401</td>
                 <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
               </tr>
               <tr>
                 <td class="igfc-col-num">5</td>
                 <td><div class="igfc-user"><span class="igfc-avatar-fallback">C</span><div class="igfc-user-text"><div class="igfc-name-row"><a href="#">@cedar.wave</a><span class="igfc-verified">✓</span></div></div></div></td>
                 <td>Priya Raman</td>
-                <td class="igfc-col-count">91.2K</td>
-                <td class="igfc-col-count">188</td>
                 <td class="igfc-col-action"><button class="igfc-row-btn igfc-row-btn-remove" type="button">Remove</button></td>
               </tr>
             </tbody>

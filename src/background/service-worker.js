@@ -47,9 +47,34 @@ async function fetchAvatarDataUrl(url) {
   return "data:" + contentType.split(";")[0] + ";base64," + base64;
 }
 
+// The popup closes as soon as a new tab opens, so the worker hands the panel
+// request to the tab once its content script is up.
+function openPanelWhenReady(tabId, panelMessage) {
+  var tries = 0;
+  function attempt() {
+    chrome.tabs.sendMessage(tabId, panelMessage).catch(function () {
+      tries += 1;
+      if (tries < 15) setTimeout(attempt, 1000);
+    });
+  }
+  function onUpdated(updatedId, info) {
+    if (updatedId !== tabId || info.status !== "complete") return;
+    chrome.tabs.onUpdated.removeListener(onUpdated);
+    attempt();
+  }
+  chrome.tabs.onUpdated.addListener(onUpdated);
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message && message.type === "OPEN_INSTAGRAM") {
-    chrome.tabs.create({ url: "https://www.instagram.com/" });
+    chrome.tabs.create({ url: "https://www.instagram.com/" }, function (tab) {
+      if (message.openPanel && tab) {
+        openPanelWhenReady(tab.id, {
+          type: "IGFC_OPEN",
+          username: message.username || "",
+        });
+      }
+    });
     sendResponse({ ok: true });
     return false;
   }

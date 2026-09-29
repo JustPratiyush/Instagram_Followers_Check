@@ -1,20 +1,20 @@
 #!/bin/sh
-# Build every icon size from icons/icon-source.png with an even black border around the
-# artwork, then re-render the Chrome Web Store images that show the icon.
+# Build every icon size from icons/icon-source.png as a full-bleed square with rounded
+# (transparent) corners, then re-render the Chrome Web Store images that show the icon.
 #
-# Usage: sh store/build-icons.sh [border-percent]
-#   border-percent  Border on each side, as a % of the icon size (default 8).
-#                   The magnifier handle pokes into the border, so keep it at 7 or more.
+# Usage: sh store/build-icons.sh [radius-percent]
+#   radius-percent  Corner radius, as a % of the icon size (default 22, like app icons).
+#                   0 gives square corners; 50 gives a circle.
 #
 # Needs node and a Chromium browser (Chrome, Brave or Chromium).
 
 set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SRC="$ROOT/icons/icon-source.png"
-BORDER="${1:-8}"
+RADIUS="${1:-22}"
 
-case "$BORDER" in
-  ''|*[!0-9.]*) echo "Border must be a number (percent), e.g. 8" >&2; exit 1 ;;
+case "$RADIUS" in
+  ''|*[!0-9.]*) echo "Radius must be a number (percent), e.g. 22" >&2; exit 1 ;;
 esac
 command -v node >/dev/null || { echo "node is required" >&2; exit 1; }
 
@@ -39,7 +39,7 @@ B64="$(base64 < "$SRC" | tr -d '\n')"
 
 cat > "$TMP/build.html" <<EOF
 <!doctype html><html><body><pre id="out"></pre><script>
-var BORDER = $BORDER / 100;
+var RADIUS = Math.min(50, $RADIUS) / 100;
 var SIZES = [16, 32, 48, 128, 256, 512];
 
 function scaled(src, size) {
@@ -64,38 +64,22 @@ function scaled(src, size) {
 
 var img = new Image();
 img.onload = function () {
-  var W = img.width, H = img.height;
-  var probe = document.createElement("canvas");
-  probe.width = W; probe.height = H;
-  var pctx = probe.getContext("2d");
-  pctx.drawImage(img, 0, 0);
-  var d = pctx.getImageData(0, 0, W, H).data;
-
-  // The colourful gradient square is the artwork; the border is measured from it.
-  var x0 = W, y0 = H, x1 = 0, y1 = 0;
-  for (var y = 0; y < H; y++) {
-    for (var x = 0; x < W; x++) {
-      var i = (y * W + x) * 4;
-      var spread = Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]);
-      if (d[i + 3] > 200 && spread > 90) {
-        if (x < x0) x0 = x; if (x > x1) x1 = x;
-        if (y < y0) y0 = y; if (y > y1) y1 = y;
-      }
-    }
-  }
-  var side = Math.max(x1 - x0 + 1, y1 - y0 + 1);
-  var crop = Math.round(side / (1 - 2 * BORDER));
-  var cx = (x0 + x1 + 1) / 2, cy = (y0 + y1 + 1) / 2;
-
-  // Square master: black border all round, artwork centred.
+  // Centre-crop to a square, then clip the corners at full resolution so the
+  // curve stays smooth once it's scaled down.
+  var side = Math.min(img.width, img.height);
   var master = document.createElement("canvas");
-  master.width = master.height = crop;
+  master.width = master.height = side;
   var mctx = master.getContext("2d");
-  mctx.fillStyle = "#000";
-  mctx.fillRect(0, 0, crop, crop);
-  mctx.drawImage(img, Math.round(crop / 2 - cx), Math.round(crop / 2 - cy));
+  mctx.beginPath();
+  mctx.roundRect(0, 0, side, side, side * RADIUS);
+  mctx.clip();
+  mctx.drawImage(
+    img,
+    (img.width - side) / 2, (img.height - side) / 2, side, side,
+    0, 0, side, side
+  );
 
-  var out = { artwork: [x0, y0, x1, y1], master: crop, icons: {} };
+  var out = { master: side, icons: {} };
   SIZES.forEach(function (s) { out.icons[s] = scaled(master, s); });
   document.getElementById("out").textContent = JSON.stringify(out);
 };
@@ -108,14 +92,14 @@ EOF
 
 node -e '
 const fs = require("fs");
-const [outFile, root, border] = process.argv.slice(1);
+const [outFile, root, radius] = process.argv.slice(1);
 const m = fs.readFileSync(outFile, "utf8").match(/<pre id="out">([\s\S]*?)<\/pre>/);
 if (!m || !m[1].trim()) { console.error("Icon build failed: browser produced no output"); process.exit(1); }
 const out = JSON.parse(m[1].replace(/&quot;/g, "\"").replace(/&amp;/g, "&"));
 const write = (file, url) => fs.writeFileSync(file, Buffer.from(url.split(",")[1], "base64"));
 for (const size of [16, 32, 48, 128, 256]) write(`${root}/icons/icon${size}.png`, out.icons[size]);
 write(`${root}/store/_preview/icon512.png`, out.icons[512]);
-console.log(`Built icons with a ${border}% border (artwork ${out.artwork.join(",")}, master ${out.master}px)`);
-' "$TMP/out.html" "$ROOT" "$BORDER"
+console.log(`Built icons with ${radius}% rounded corners (master ${out.master}px)`);
+' "$TMP/out.html" "$ROOT" "$RADIUS"
 
 sh "$ROOT/store/render-graphics.sh"
