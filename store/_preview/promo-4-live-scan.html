@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>promo 4 live scan</title>
+    <link rel="stylesheet" href="../../src/content/panel.css" />
+    <link rel="stylesheet" href="promo-slides.css" />
+    <style>
+      .frame { left: 548px; top: 128px; }
+      /* Full size so the ring and counters are readable; same footprint as the other slides. */
+      .frame .igfc-panel { width: 706px; height: 548px; }
+    </style>
+  </head>
+  <body>
+    <div class="slide">
+      <div class="brand"><img src="icon512.png" alt="" />Follow Check for Instagram</div>
+
+      <div class="copy">
+        <p class="eyebrow">Live progress</p>
+        <h1>Watch it scan in real time.</h1>
+        <p class="sub">Followers and following load side by side, with real progress based on the totals on your profile.</p>
+        <div class="chips">
+          <span class="chip">Real percentage</span>
+          <span class="chip">Per-list counts</span>
+        </div>
+      </div>
+
+      <div class="frame">
+        <div id="igfc-root">
+          <div class="igfc-panel">
+            <div class="igfc-header">
+              <div class="igfc-title-wrap"><h1 class="igfc-title">Follow Check for Instagram</h1></div>
+              <button class="igfc-close" type="button">×</button>
+            </div>
+            <div class="igfc-progress"><i style="width: 87%"></i></div>
+            <div class="igfc-body igfc-body-center">
+              <div class="igfc-loader">
+                <div class="igfc-loader-ring">
+                  <svg viewBox="0 0 120 120" aria-hidden="true">
+                    <defs>
+                      <linearGradient id="igfc-ring-gradient" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0%" stop-color="#feda75"></stop>
+                        <stop offset="35%" stop-color="#fa7e1e"></stop>
+                        <stop offset="65%" stop-color="#d62976"></stop>
+                        <stop offset="100%" stop-color="#962fbf"></stop>
+                      </linearGradient>
+                    </defs>
+                    <circle class="igfc-ring-track" cx="60" cy="60" r="52"></circle>
+                    <circle class="igfc-ring-arc" cx="60" cy="60" r="52" stroke-dasharray="326.73" stroke-dashoffset="42.47"></circle>
+                  </svg>
+                  <img class="igfc-loader-logo" src="../../icons/icon128.png" alt="" />
+                  <span class="igfc-loader-pct">87%</span>
+                </div>
+                <h2 class="igfc-loading-title">Scanning your lists</h2>
+                <p class="igfc-loader-sub">Loading followers and following…</p>
+                <div class="igfc-load-meters">
+                  <div class="igfc-load-meter">
+                    <div class="igfc-load-meter-head"><span class="igfc-load-label">Followers</span><span class="igfc-load-tag">Loading</span></div>
+                    <div class="igfc-load-value"><strong>184</strong><small> / 259</small></div>
+                    <div class="igfc-load-bar"><i style="width: 71%"></i></div>
+                  </div>
+                  <div class="igfc-load-meter">
+                    <div class="igfc-load-meter-head"><span class="igfc-load-label">Following</span><span class="igfc-load-tag igfc-done">✓ Done</span></div>
+                    <div class="igfc-load-value"><strong>320</strong><small> / 320</small></div>
+                    <div class="igfc-load-bar"><i style="width: 100%"></i></div>
+                  </div>
+                </div>
+                <p class="igfc-loader-foot">Keep this tab open. Big lists can take a minute.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">Unofficial. Not affiliated with Instagram or Meta.</div>
+    </div>
+  </body>
+</html>

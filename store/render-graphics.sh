@@ -32,6 +32,12 @@ shot 01-popup.html 1280,800 screenshot-01-popup.png
 shot 02-start.html 1280,800 screenshot-02-start.png
 shot 03-scanning.html 1280,800 screenshot-03-scanning.png
 shot 04-results.html 1280,800 screenshot-04-results.png
+# Promotional screenshots (1280x800, the store's screenshot size), also shown in the README.
+shot promo-1-overview.html 1280,800 promo-1-overview.png
+shot promo-2-lists.html 1280,800 promo-2-lists.png
+shot promo-3-actions.html 1280,800 promo-3-actions.png
+shot promo-4-live-scan.html 1280,800 promo-4-live-scan.png
+shot promo-5-privacy.html 1280,800 promo-5-privacy.png
 shot promo-small.html 440,280 promo-small-440x280.png
 shot promo-marquee.html 1400,560 promo-marquee-1400x560.png
 cp "$ROOT/icons/icon128.png" "$OUT/store-icon-128.png"

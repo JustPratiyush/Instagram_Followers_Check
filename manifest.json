@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Follow Check for Instagram",
-  "version": "1.5.0",
-  "description": "Unofficial tool to compare followers and following for your Instagram or any public profile. No passwords. Not affiliated with Meta.",
+  "version": "1.6.0",
+  "description": "Unofficial tool to compare Instagram followers and following from your logged-in tab. No passwords. Not affiliated with Meta.",
   "homepage_url": "https://github.com/JustPratiyush/Instagram_Followers_Check",
   "host_permissions": [
     "https://www.instagram.com/*",

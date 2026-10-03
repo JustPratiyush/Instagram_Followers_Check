@@ -5,3 +5,8 @@ cws-upload/
 
 # Local-only backups (never commit: contains Instagram trademarks)
 .backup/
+
+# Reel motion graphics: Remotion project, footage links and renders. Not part of the extension.
+motion/
+
+

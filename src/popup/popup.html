@@ -17,40 +17,19 @@
         <span id="version" class="version"></span>
       </header>
 
-      <form id="checkForm" class="card" novalidate>
-        <label class="label" for="username">Username</label>
+      <section class="card">
         <p class="help">
-          See who they follow back, who doesn't follow them, and their mutuals.
+          See who doesn't follow you back, who you don't follow back, and your
+          mutuals.
         </p>
-        <div class="field">
-          <span class="at" aria-hidden="true">@</span>
-          <input
-            id="username"
-            type="text"
-            placeholder="username or profile link"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            maxlength="100"
-          />
-        </div>
-        <button id="checkBtn" class="primary" type="submit">Check</button>
+        <button id="openBtn" class="primary" type="button">Open Follow Check</button>
         <p id="status" class="status" role="status" aria-live="polite" hidden></p>
-      </form>
-
-      <section id="recent" class="recent" hidden>
-        <h2>Recent</h2>
-        <ul id="recentList"></ul>
       </section>
 
-      <section class="own">
-        <button id="selfBtn" type="button">Scan my own account</button>
-        <p class="note">
-          Works for public accounts, and private ones you follow. Uses your
-          logged-in Instagram tab: no passwords, and nothing is sent to the
-          developer or saved.
-        </p>
-      </section>
+      <p class="note">
+        Uses your logged-in Instagram tab: no passwords, and nothing is sent to
+        the developer or saved.
+      </p>
     </main>
     <script src="popup.js"></script>
   </body>

@@ -1,0 +1,230 @@
+/* Shared look for the 1280x800 promotional screenshots (promo-*.html). The panel
+   mock-ups inside them use the extension's real panel.css, loaded before this file. */
+
+html,
+body {
+  margin: 0;
+  width: 1280px;
+  height: 800px;
+  overflow: hidden;
+  background: #0d0d0f;
+}
+
+.slide {
+  position: relative;
+  width: 1280px;
+  height: 800px;
+  overflow: hidden;
+  font-family: -apple-system, "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+  color: #ffffff;
+  background:
+    radial-gradient(820px 560px at 88% 26%, rgba(150, 47, 191, 0.32), rgba(0, 0, 0, 0) 62%),
+    radial-gradient(700px 520px at 74% 100%, rgba(250, 126, 30, 0.22), rgba(0, 0, 0, 0) 62%),
+    radial-gradient(560px 480px at 0% 0%, rgba(214, 41, 118, 0.2), rgba(0, 0, 0, 0) 64%),
+    #0d0d0f;
+}
+
+/* Brand mark, top left of every slide. */
+.brand {
+  position: absolute;
+  left: 72px;
+  top: 52px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.brand img {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+
+.copy {
+  position: absolute;
+  left: 72px;
+  top: 50%;
+  width: 450px;
+  transform: translateY(-50%);
+}
+
+.eyebrow {
+  margin: 0 0 16px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #feda75, #fa7e1e 35%, #d62976 70%, #962fbf);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.copy h1 {
+  margin: 0 0 22px;
+  font-size: 58px;
+  line-height: 1.03;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+
+.sub {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.45;
+  color: #b8b8b8;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 13px;
+  border: 1px solid #2f2f2f;
+  background: rgba(28, 28, 28, 0.85);
+  font-size: 15px;
+  font-weight: 600;
+  color: #e8e8e8;
+}
+
+.chip::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: linear-gradient(135deg, #fa7e1e, #d62976, #962fbf);
+}
+
+.foot {
+  position: absolute;
+  left: 72px;
+  bottom: 40px;
+  font-size: 13px;
+  color: #6a6a6a;
+}
+
+/* A framed mock-up with a soft brand-coloured glow behind it. Each slide places the
+   frame and sets the zoom on its #igfc-root (zoom on the frame would also scale its
+   left/top). */
+.frame {
+  position: absolute;
+  z-index: 0;
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.frame::before {
+  content: "";
+  position: absolute;
+  inset: 24px;
+  z-index: -1;
+  background: linear-gradient(135deg, #feda75, #fa7e1e 30%, #d62976 62%, #962fbf);
+  filter: blur(46px);
+  opacity: 0.45;
+}
+
+/* The real panel, laid out in place instead of floating over a page. */
+.frame #igfc-root {
+  display: block;
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  pointer-events: auto;
+}
+
+.frame .igfc-panel {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  opacity: 1;
+  width: 980px;
+  max-height: none;
+}
+
+.frame .igfc-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Static render: freeze the loader's animations. */
+.frame #igfc-root *,
+.frame #igfc-root *::before {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Small floating confirmation card used on the actions slide. */
+.toast {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border: 1px solid #254536;
+  background: #101a15;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  font-size: 16px;
+  font-weight: 600;
+  color: #c9f0dc;
+}
+
+.toast b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: #2f9e6b;
+  color: #ffffff;
+  font-size: 15px;
+}
+
+/* Feature cards on the privacy slide. */
+.cards {
+  position: absolute;
+  left: 560px;
+  top: 50%;
+  width: 650px;
+  transform: translateY(-50%);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.card {
+  padding: 26px 24px;
+  border: 1px solid #2a2a2a;
+  background: rgba(22, 22, 22, 0.88);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+}
+
+.card svg {
+  width: 34px;
+  height: 34px;
+  display: block;
+  margin-bottom: 18px;
+}
+
+.card h2 {
+  margin: 0 0 8px;
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.card p {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.45;
+  color: #a9a9a9;
+}
