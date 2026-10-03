@@ -9,7 +9,7 @@ Everything you need to fill in the Developer Dashboard, field by field. Every an
 1. **Privacy policy must be online.** Commit and push the `store/` folder, then enable GitHub Pages (Settings → Pages → Deploy from branch → `main` / `/ (root)`). After a minute or two, this URL should load:
 
    ```text
-   https://justpratiyush.github.io/Instagram_Followers_Check/store/privacy-policy.html
+   https://justpratiyush.github.io/instagram-followers-check-extension/store/privacy-policy.html
    ```
 
 2. **Create a test Instagram account for the reviewers.** Use a fresh account, never your personal one. It should follow a few accounts and have a few followers, so the lists aren't empty. Turn **off** two-factor authentication on it, because reviewers can't receive your codes.
@@ -118,8 +118,8 @@ The icon is built from `icons/icon-source.png`, edge to edge with rounded (trans
 Never use Instagram's camera logo (glyph) or wordmark in any of these images.
 
 **Official URL:** leave blank.
-**Homepage URL:** `https://github.com/JustPratiyush/Instagram_Followers_Check`
-**Support URL:** `https://github.com/JustPratiyush/Instagram_Followers_Check/issues`
+**Homepage URL:** `https://github.com/JustPratiyush/instagram-followers-check-extension`
+**Support URL:** `https://github.com/JustPratiyush/instagram-followers-check-extension/issues`
 **Mature content:** No
 
 ---
