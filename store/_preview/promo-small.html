@@ -1,3 +1,75 @@
-<!doctype html><html><head><style>html,body{margin:0;width:440px;height:280px;overflow:hidden;background:#151515}
-img{position:absolute;width:200px;height:200px;left:120px;top:40px}</style></head>
-<body><img src="icon512.png" alt=""></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>promo small</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 440px;
+        height: 280px;
+        overflow: hidden;
+        background: #121212;
+        font-family: -apple-system, "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+        color: #ffffff;
+      }
+      .stage {
+        width: 440px;
+        height: 280px;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        padding: 0 28px;
+        box-sizing: border-box;
+        /* Same soft brand-coloured light as the marquee tile. */
+        background:
+          radial-gradient(circle at 98px 140px, rgba(214, 41, 118, 0.4), rgba(150, 47, 191, 0.14) 110px, rgba(0, 0, 0, 0) 180px),
+          #121212;
+      }
+      .logo {
+        flex: 0 0 auto;
+        width: 140px;
+        height: 140px;
+        filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.55));
+      }
+      .copy {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .eyebrow {
+        margin: 0 0 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        background: linear-gradient(90deg, #feda75, #fa7e1e 35%, #d62976 75%, #962fbf);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      h1 {
+        margin: 0;
+        font-size: 29px;
+        line-height: 1.08;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+      }
+      .sub {
+        margin: 10px 0 0;
+        font-size: 14px;
+        line-height: 1.4;
+        color: #b4b4b4;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <img class="logo" src="icon512.png" alt="" />
+      <div class="copy">
+        <p class="eyebrow">Follow Check</p>
+        <h1>See who doesn’t follow you back.</h1>
+        <p class="sub">Followers, following and mutuals.<br />No passwords.</p>
+      </div>
+    </div>
+  </body>
+</html>

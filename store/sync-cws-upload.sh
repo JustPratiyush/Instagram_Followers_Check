@@ -18,5 +18,5 @@ cp "$ROOT/icons/icon16.png" "$ROOT/icons/icon32.png" "$ROOT/icons/icon48.png" \
 find "$DEST" -name ".DS_Store" -delete
 
 echo "Ready to zip:"
-echo "  cd \"$DEST\" && zip -r ../cws-upload.zip . -x '*.DS_Store'"
+echo "  rm -f \"$ROOT/cws-upload.zip\" && cd \"$DEST\" && zip -r ../cws-upload.zip . -x '*.DS_Store'"
 find "$DEST" -type f | sort

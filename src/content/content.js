@@ -12,10 +12,8 @@
     activeTab: "notFollowingBack",
     verifiedFilter: "all",
     query: "",
-    // Whose lists are shown: { username, userId, isSelf, followerCount, ... }.
+    // The signed-in account: { username, userId, followerCount, followingCount }.
     account: null,
-    // Username being scanned ("" = your own lists) while a scan runs.
-    scanUsername: "",
     followers: [],
     following: [],
     comparison: null,
@@ -185,31 +183,17 @@
     titleWrap.appendChild(status);
     header.appendChild(titleWrap);
 
-    // Stays in the header next to the results, so you can check someone else
-    // without going back to the start screen.
-    var headerCheck = buildCheckForm(
-      "igfc-header-check",
-      "Check another account",
-      function () {
-        state.status = "Enter an Instagram username, like natgeo.";
-        renderChrome();
-      }
-    );
-
     var actions = el("div", "igfc-actions");
     var scanBtn = el("button", "igfc-btn igfc-btn-primary", {
       type: "button",
       text: "Scan my lists",
     });
-    scanBtn.addEventListener("click", function () {
-      startScan("");
-    });
+    scanBtn.addEventListener("click", startScan);
     var exportBtn = el("button", "igfc-btn", {
       type: "button",
       text: "Export CSV",
     });
     exportBtn.addEventListener("click", exportCsv);
-    actions.appendChild(headerCheck);
     actions.appendChild(scanBtn);
     actions.appendChild(exportBtn);
 
@@ -238,8 +222,6 @@
     });
     searchRow.appendChild(search);
 
-    var notice = el("div", "igfc-notice igfc-hidden");
-
     var body = el("div", "igfc-body");
 
     panel.appendChild(header);
@@ -247,7 +229,6 @@
     panel.appendChild(stats);
     panel.appendChild(subfilters);
     panel.appendChild(searchRow);
-    panel.appendChild(notice);
     panel.appendChild(body);
 
     root.appendChild(fab);
@@ -259,7 +240,6 @@
       fab: fab,
       backdrop: backdrop,
       panel: panel,
-      title: title,
       progress: progress,
       progressBar: progressBar,
       actions: actions,
@@ -270,7 +250,6 @@
       subfilters: subfilters,
       searchRow: searchRow,
       search: search,
-      notice: notice,
       body: body,
     };
 
@@ -289,44 +268,12 @@
     });
   }
 
-  function normalizeUsername(raw) {
-    var value = String(raw || "").trim();
-    var fromUrl = value.match(/instagram\.com\/([^/?#\s]+)/i);
-    if (fromUrl) value = fromUrl[1];
-    value = value.replace(/^@+/, "").toLowerCase();
-    return /^[a-z0-9._]{1,30}$/.test(value) ? value : "";
-  }
-
-  function isOwnLists() {
-    return !state.account || Boolean(state.account.isSelf);
-  }
-
-  // "" for your own lists, otherwise the checked username; null before any scan.
-  function shownUsername() {
-    if (!state.comparison || !state.account) return null;
-    return state.account.isSelf ? "" : state.account.username.toLowerCase();
-  }
-
-  function startScan(username) {
-    username = username || "";
-    // Same scan already running: nothing to do. A different one replaces it.
-    if (state.scanning && state.scanUsername === username) return;
+  function startScan() {
+    if (state.scanning) return;
     injectBridge();
-    if (shownUsername() !== username) {
-      // Different account: its old results would only mislead.
-      state.comparison = null;
-      state.followers = [];
-      state.following = [];
-      state.account = null;
-      state.activeTab = "notFollowingBack";
-      state.verifiedFilter = "all";
-      state.query = "";
-      if (refs.search) refs.search.value = "";
-    }
     state.scanning = true;
-    state.scanUsername = username;
     state.error = "";
-    state.status = username ? "Looking up @" + username + "…" : "Connecting…";
+    state.status = "Connecting…";
     state.scanStage = "viewer";
     state.followersLoaded = 0;
     state.followingLoaded = 0;
@@ -338,7 +285,7 @@
     renderAll();
 
     setTimeout(function () {
-      postToBridge({ type: "scan", requestId: requestId, username: username });
+      postToBridge({ type: "scan", requestId: requestId });
     }, 60);
   }
 
@@ -558,49 +505,15 @@
     return Number(n).toLocaleString("en-US");
   }
 
-  // Instagram can hand back fewer people than a profile's counts say (hidden or
-  // deactivated accounts, or it stopped paging). Say so when the gap is real.
-  function incompleteListsNotice() {
-    var account = state.account;
-    if (!hasResults() || state.scanning || !account || account.isSelf) return "";
-    var gaps = [];
-    [
-      ["followers", state.followers.length, account.followerCount],
-      ["following", state.following.length, account.followingCount],
-    ].forEach(function (item) {
-      var loaded = item[1];
-      var reported = item[2];
-      if (reported == null) return;
-      if (reported - loaded > Math.max(5, reported * 0.05)) {
-        gaps.push(formatNumber(loaded) + " of " + formatNumber(reported) + " " + item[0]);
-      }
-    });
-    if (!gaps.length) return "";
-    return (
-      "Instagram only returned " +
-      gaps.join(" and ") +
-      " for @" +
-      account.username +
-      ", so these lists may be incomplete."
-    );
-  }
-
   function renderChrome() {
     ensureUi();
     var ready = hasResults();
-    refs.title.textContent =
-      ready && !isOwnLists()
-        ? "Follow Check · @" + state.account.username
-        : "Follow Check for Instagram";
     refs.actions.classList.toggle("igfc-hidden", !ready);
     // While scanning, the loader in the body already says what's happening.
     refs.status.classList.toggle("igfc-hidden", !ready || state.scanning);
     refs.stats.classList.toggle("igfc-hidden", !ready);
     refs.searchRow.classList.toggle("igfc-hidden", !ready);
     renderSubfilters();
-    var notice = incompleteListsNotice();
-    refs.notice.textContent = notice;
-    refs.notice.classList.toggle("igfc-hidden", !notice);
     refs.scanBtn.disabled = state.scanning;
     refs.exportBtn.disabled = !ready;
     refs.scanBtn.textContent = state.scanning ? "Scanning…" : "Scan my lists";
@@ -619,19 +532,10 @@
     }
 
     var counts = state.comparison.counts;
-    var who = isOwnLists() ? "" : "@" + state.account.username;
     var items = [
-      [
-        "notFollowingBack",
-        who ? "Don't follow " + who + " back" : "Don't follow you",
-        counts.notFollowingBack,
-      ],
-      [
-        "notFollowedBack",
-        who ? who + " doesn't follow back" : "You don't follow",
-        counts.notFollowedBack,
-      ],
-      ["mutual", who ? "Mutuals" : "Follow back", counts.mutual],
+      ["notFollowingBack", "Don't follow you", counts.notFollowingBack],
+      ["notFollowedBack", "You don't follow", counts.notFollowedBack],
+      ["mutual", "Follow back", counts.mutual],
       ["followers", "Followers", counts.followers],
       ["following", "Following", counts.following],
     ];
@@ -819,50 +723,6 @@
     return null;
   }
 
-  function buildCheckForm(className, placeholder, onInvalid) {
-    var form = el("form", "igfc-check-form " + className, { novalidate: "" });
-    var field = el("label", "igfc-check-field");
-    field.appendChild(el("span", "igfc-check-at", { text: "@" }));
-    var input = el("input", "igfc-check-input", {
-      type: "text",
-      placeholder: placeholder,
-      autocomplete: "off",
-      autocapitalize: "off",
-      spellcheck: "false",
-      maxlength: "100",
-      "aria-label": "Instagram username to check",
-    });
-    field.appendChild(input);
-    form.appendChild(field);
-    form.appendChild(el("button", "igfc-btn", { type: "submit", text: "Check" }));
-    form.addEventListener("submit", function (event) {
-      event.preventDefault();
-      var username = normalizeUsername(input.value);
-      if (!username) {
-        onInvalid();
-        input.focus();
-        return;
-      }
-      input.value = "";
-      startScan(username);
-    });
-    return form;
-  }
-
-  function renderCheckForm() {
-    var hint = el("p", "igfc-check-hint", {
-      text: "Works for public accounts, and private ones you follow.",
-    });
-    var form = buildCheckForm("", "username", function () {
-      hint.textContent = "Enter an Instagram username, like natgeo.";
-      hint.classList.add("igfc-check-hint-error");
-    });
-    var wrap = el("div", "igfc-check");
-    wrap.appendChild(form);
-    wrap.appendChild(hint);
-    return wrap;
-  }
-
   function renderHeroScan() {
     var wrap = el("div", "igfc-hero");
     wrap.appendChild(
@@ -870,23 +730,17 @@
         text: "Load your followers and following from this logged-in session.",
       })
     );
+    wrap.appendChild(
+      el("p", "igfc-hero-disclosure", {
+        text: "By scanning, you allow this unofficial extension to read your follower and following lists from your existing Instagram session. The comparison runs only in this tab: nothing is sent to the developer or saved after you close it. No passwords are collected. Not affiliated with Instagram or Meta.",
+      })
+    );
     var heroBtn = el("button", "igfc-btn igfc-btn-primary igfc-hero-btn", {
       type: "button",
       text: "Scan my lists",
     });
-    heroBtn.addEventListener("click", function () {
-      startScan("");
-    });
+    heroBtn.addEventListener("click", startScan);
     wrap.appendChild(heroBtn);
-    wrap.appendChild(
-      el("p", "igfc-hero-divider", { text: "or check another account" })
-    );
-    wrap.appendChild(renderCheckForm());
-    wrap.appendChild(
-      el("p", "igfc-hero-disclosure", {
-        text: "By scanning, you allow this unofficial extension to read follower and following lists (yours, or the account you check) from your existing Instagram session. The comparison runs only in this tab: nothing is sent to the developer or saved after you close it. No passwords are collected. Not affiliated with Instagram or Meta.",
-      })
-    );
     refs.body.appendChild(wrap);
   }
 
@@ -1037,12 +891,9 @@
     );
     loader.pct.textContent = Math.round(ratio * 100) + "%";
 
-    var who = state.scanUsername ? "@" + state.scanUsername : "";
-    loader.title.textContent = who ? "Checking " + who : "Scanning your lists";
+    loader.title.textContent = "Scanning your lists";
     loader.sub.textContent = !listing
-      ? who
-        ? "Looking up " + who + "…"
-        : "Connecting to your Instagram…"
+      ? "Connecting to your Instagram…"
       : state.followersDone && state.followingDone
         ? "Comparing lists…"
         : "Loading followers and following…";
@@ -1082,9 +933,7 @@
         type: "button",
         text: "Try again",
       });
-      retry.addEventListener("click", function () {
-        startScan(state.scanUsername);
-      });
+      retry.addEventListener("click", startScan);
       var back = el("button", "igfc-btn igfc-hero-btn", {
         type: "button",
         text: "Back",
@@ -1115,13 +964,10 @@
       return;
     }
 
-    // Follow/unfollow only makes sense for your own lists, not someone you checked.
-    var showActions = isOwnLists();
     var table = el("table", "igfc-table");
     var thead = document.createElement("thead");
     var headRow = document.createElement("tr");
-    var headers = ["#", "Account", "Name"];
-    if (showActions) headers.push("Action");
+    var headers = ["#", "Account", "Name", "Action"];
     headers.forEach(function (label) {
       var th = el("th", null, { text: label });
       if (label === "#") th.className = "igfc-col-num";
@@ -1165,12 +1011,10 @@
 
       tr.appendChild(el("td", null, { text: user.full_name || "—" }));
 
-      if (showActions) {
-        var actionTd = el("td", "igfc-col-action");
-        var btn = actionButtonFor(user);
-        if (btn) actionTd.appendChild(btn);
-        tr.appendChild(actionTd);
-      }
+      var actionTd = el("td", "igfc-col-action");
+      var btn = actionButtonFor(user);
+      if (btn) actionTd.appendChild(btn);
+      tr.appendChild(actionTd);
 
       tbody.appendChild(tr);
     });
@@ -1239,9 +1083,6 @@
     if (message && message.type === "IGFC_OPEN") {
       ensureUi();
       setOpen(true);
-      // From the popup's username box: check that account straight away.
-      var username = normalizeUsername(message.username);
-      if (username) startScan(username);
       sendResponse({ ok: true });
       return false;
     }

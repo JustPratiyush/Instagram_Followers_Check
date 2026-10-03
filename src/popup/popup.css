@@ -2,7 +2,6 @@
   color-scheme: dark;
   --bg: #111111;
   --card: #1a1a1a;
-  --field: #141414;
   --text: #f2f2f2;
   --muted: #8a8a8a;
   --line: #2a2a2a;
@@ -50,7 +49,6 @@ header {
 }
 
 h1,
-h2,
 p {
   margin: 0;
 }
@@ -82,49 +80,11 @@ h1 {
   margin: 0;
 }
 
-.label {
-  font-size: 13px;
-  font-weight: 650;
-}
-
 .help {
-  margin-top: -4px;
-  color: var(--muted);
-  font-size: 12px;
+  margin-bottom: 4px;
+  color: #cfcfcf;
+  font-size: 13px;
   line-height: 1.45;
-}
-
-.field {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--line);
-  background: var(--field);
-}
-
-.field:focus-within {
-  border-color: #555;
-}
-
-.at {
-  padding: 0 4px 0 12px;
-  color: var(--muted);
-  font-size: 14px;
-}
-
-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  color: var(--text);
-  padding: 10px 12px 10px 0;
-  font: inherit;
-  font-size: 14px;
-  outline: none;
-}
-
-input::placeholder {
-  color: #5f5f5f;
 }
 
 .status {
@@ -162,74 +122,6 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
   filter: none;
-}
-
-.recent h2 {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 6px;
-}
-
-.recent ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border: 1px solid var(--line);
-}
-
-.recent li {
-  display: flex;
-  align-items: stretch;
-}
-
-.recent li + li {
-  border-top: 1px solid var(--line);
-}
-
-.recent-pick,
-.recent-remove {
-  border: none;
-  background: transparent;
-}
-
-.recent-pick {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 9px 12px;
-  text-align: left;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.recent-pick:hover,
-.recent-remove:hover {
-  background: var(--card);
-  filter: none;
-}
-
-.recent-remove {
-  flex: 0 0 auto;
-  width: 36px;
-  padding: 0;
-  color: var(--muted);
-  font-size: 16px;
-  font-weight: 400;
-}
-
-.recent-remove:hover {
-  color: var(--text);
-}
-
-.own {
-  display: grid;
-  gap: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
 }
 
 .note {

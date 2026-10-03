@@ -69,10 +69,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message && message.type === "OPEN_INSTAGRAM") {
     chrome.tabs.create({ url: "https://www.instagram.com/" }, function (tab) {
       if (message.openPanel && tab) {
-        openPanelWhenReady(tab.id, {
-          type: "IGFC_OPEN",
-          username: message.username || "",
-        });
+        openPanelWhenReady(tab.id, { type: "IGFC_OPEN" });
       }
     });
     sendResponse({ ok: true });

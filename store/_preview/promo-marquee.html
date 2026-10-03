@@ -1,3 +1,106 @@
-<!doctype html><html><head><style>html,body{margin:0;width:1400px;height:560px;overflow:hidden;background:#151515}
-img{position:absolute;width:430px;height:430px;left:485px;top:65px}</style></head>
-<body><img src="icon512.png" alt=""></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>promo marquee</title>
+    <style>
+      html, body {
+        margin: 0;
+        width: 1400px;
+        height: 560px;
+        overflow: hidden;
+        background: #121212;
+        font-family: -apple-system, "Helvetica Neue", "Segoe UI", Arial, sans-serif;
+        color: #ffffff;
+      }
+      .stage {
+        position: relative;
+        width: 1400px;
+        height: 560px;
+        display: flex;
+        align-items: center;
+        gap: 72px;
+        padding: 0 110px;
+        box-sizing: border-box;
+        /* Soft brand-coloured light behind the logo, fading into the dark background. */
+        background:
+          radial-gradient(circle at 250px 280px, rgba(214, 41, 118, 0.38), rgba(150, 47, 191, 0.14) 260px, rgba(0, 0, 0, 0) 420px),
+          radial-gradient(circle at 1320px 40px, rgba(250, 126, 30, 0.12), rgba(0, 0, 0, 0) 360px),
+          #121212;
+      }
+      .logo {
+        flex: 0 0 auto;
+        width: 290px;
+        height: 290px;
+        filter: drop-shadow(0 24px 48px rgba(0, 0, 0, 0.55));
+      }
+      .copy {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+      .eyebrow {
+        margin: 0 0 18px;
+        font-size: 20px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        background: linear-gradient(90deg, #feda75, #fa7e1e 30%, #d62976 65%, #962fbf);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      h1 {
+        margin: 0;
+        font-size: 66px;
+        line-height: 1.04;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+      .sub {
+        margin: 20px 0 30px;
+        max-width: 700px;
+        font-size: 25px;
+        line-height: 1.4;
+        color: #b4b4b4;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 11px 18px;
+        border: 1px solid #2f2f2f;
+        background: #1c1c1c;
+        font-size: 20px;
+        font-weight: 600;
+        color: #e8e8e8;
+      }
+      .chip::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        background: linear-gradient(135deg, #fa7e1e, #d62976, #962fbf);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <img class="logo" src="icon512.png" alt="" />
+      <div class="copy">
+        <p class="eyebrow">Follow Check for Instagram</p>
+        <h1>See who doesn’t<br />follow you back.</h1>
+        <p class="sub">Compare your followers and following and see your mutuals, right from your logged-in tab. No passwords.</p>
+        <div class="chips">
+          <span class="chip">Not following back</span>
+          <span class="chip">Mutuals</span>
+          <span class="chip">Verified filter</span>
+          <span class="chip">Export CSV</span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

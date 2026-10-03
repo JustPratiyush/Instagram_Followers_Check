@@ -10,11 +10,6 @@
     "dev";
   var SOURCE = "ig-follow-check-bridge";
   var APP_ID = "936619743392459";
-  // Checking someone else downloads their whole lists; past this it's too slow and
-  // Instagram starts refusing requests, so we say so up front instead.
-  var MAX_OTHER_LIST = 20000;
-  // A newer scan (e.g. the user checks another username) stops the older one.
-  var activeScanId = 0;
 
   // Replace handler on updates so extension reloads pick up new bridge code.
   if (!window.__IGFC_BRIDGE_LISTENING__) {
@@ -111,9 +106,7 @@
 
     if (!res.ok) {
       var snippet = text ? ": " + text.slice(0, 160) : "";
-      var httpError = new Error("HTTP " + res.status + " for " + url + snippet);
-      httpError.status = res.status;
-      throw httpError;
+      throw new Error("HTTP " + res.status + " for " + url + snippet);
     }
 
     if (
@@ -326,7 +319,6 @@
           userId: String(dsUserId),
           username: form.username,
           full_name: form.first_name || "",
-          isSelf: true,
         };
       }
     } catch (err) {
@@ -343,7 +335,6 @@
           userId: String(user.pk || dsUserId),
           username: user.username,
           full_name: user.full_name || "",
-          isSelf: true,
         };
       }
     } catch (err) {
@@ -373,12 +364,7 @@
       userId: String(dsUserId),
       username: username,
       full_name: "",
-      isSelf: true,
     };
-  }
-
-  function formatNumber(n) {
-    return Number(n).toLocaleString("en-US");
   }
 
   function profileTotals(user) {
@@ -394,96 +380,28 @@
     };
   }
 
-  async function resolveAccount(username) {
-    if (!username) {
-      var viewer = await resolveViewer();
-      // Your own totals only drive the progress display, so a failed lookup is fine.
-      try {
-        var own = await igFetch(
-          "https://www.instagram.com/api/v1/users/web_profile_info/?username=" +
-            encodeURIComponent(viewer.username)
-        );
-        var ownTotals = profileTotals(own && own.data && own.data.user);
-        viewer.followerCount = ownTotals.followerCount;
-        viewer.followingCount = ownTotals.followingCount;
-      } catch (_) {}
-      return viewer;
-    }
-
-    var dsUserId = getCookie("ds_user_id");
-    if (!dsUserId) {
-      throw new Error(
-        "Not logged in. Sign in to Instagram in this tab, then check @" +
-          username +
-          " again."
-      );
-    }
-
-    var profile = null;
+  async function resolveAccount() {
+    var viewer = await resolveViewer();
+    // Your own totals only drive the progress display, so a failed lookup is fine.
     try {
-      profile = await igFetch(
+      var own = await igFetch(
         "https://www.instagram.com/api/v1/users/web_profile_info/?username=" +
-          encodeURIComponent(username)
+          encodeURIComponent(viewer.username)
       );
-    } catch (err) {
-      if (err && err.status === 404) {
-        throw new Error("No Instagram account is called @" + username + ".");
-      }
-      throw err;
-    }
-    var user = profile && profile.data && profile.data.user;
-    if (!user || !user.id) {
-      throw new Error("No Instagram account is called @" + username + ".");
-    }
-
-    var isSelf = String(user.id) === String(dsUserId);
-    var totals = profileTotals(user);
-    var followerCount = totals.followerCount;
-    var followingCount = totals.followingCount;
-
-    if (!isSelf && user.is_private && !user.followed_by_viewer) {
-      throw new Error(
-        "@" +
-          user.username +
-          " is private. You can only check private accounts that you follow."
-      );
-    }
-    if (
-      !isSelf &&
-      ((followerCount || 0) > MAX_OTHER_LIST ||
-        (followingCount || 0) > MAX_OTHER_LIST)
-    ) {
-      throw new Error(
-        "@" +
-          user.username +
-          " has " +
-          formatNumber(followerCount || 0) +
-          " followers and follows " +
-          formatNumber(followingCount || 0) +
-          ". That's too many to check: accounts up to " +
-          formatNumber(MAX_OTHER_LIST) +
-          " followers and following work."
-      );
-    }
-
-    return {
-      userId: String(user.id),
-      username: user.username,
-      full_name: user.full_name || "",
-      isSelf: isSelf,
-      followerCount: followerCount,
-      followingCount: followingCount,
-    };
+      var ownTotals = profileTotals(own && own.data && own.data.user);
+      viewer.followerCount = ownTotals.followerCount;
+      viewer.followingCount = ownTotals.followingCount;
+    } catch (_) {}
+    return viewer;
   }
 
-  async function fetchFriendshipList(requestId, userId, kind, onProgress) {
+  async function fetchFriendshipList(userId, kind, onProgress) {
     var collected = [];
     var seen = {};
     var maxId = null;
     var page = 0;
 
     do {
-      if (activeScanId !== requestId) throw new Error("Scan replaced by a newer one.");
       page += 1;
       var params = new URLSearchParams({
         count: "200",
@@ -537,16 +455,13 @@
     window.postMessage(payload, "*");
   }
 
-  async function runScan(requestId, username) {
-    activeScanId = requestId;
-    var account = await resolveAccount(username);
+  async function runScan(requestId) {
+    var account = await resolveAccount();
     post({
       type: "progress",
       requestId: requestId,
       stage: "viewer",
-      message: account.isSelf
-        ? "Signed in as @" + account.username
-        : "Found @" + account.username,
+      message: "Signed in as @" + account.username,
       account: account,
     });
 
@@ -588,12 +503,12 @@
     // Two workers: followers + following at the same time.
     // Pages inside each list stay sequential (Instagram cursor pagination).
     var lists = await Promise.all([
-      fetchFriendshipList(requestId, account.userId, "followers", function (p) {
+      fetchFriendshipList(account.userId, "followers", function (p) {
         followersLoaded = p.loaded;
         followersDone = !p.hasMore;
         emitListsProgress();
       }),
-      fetchFriendshipList(requestId, account.userId, "following", function (p) {
+      fetchFriendshipList(account.userId, "following", function (p) {
         followingLoaded = p.loaded;
         followingDone = !p.hasMore;
         emitListsProgress();
@@ -623,7 +538,7 @@
     }
 
     if (data.type === "scan") {
-      runScan(data.requestId, data.username || "").catch(function (err) {
+      runScan(data.requestId).catch(function (err) {
         post({
           type: "error",
           requestId: data.requestId,

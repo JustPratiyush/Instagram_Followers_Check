@@ -164,19 +164,6 @@
   flex: 0 0 auto;
 }
 
-.igfc-check-form.igfc-header-check {
-  width: 270px;
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
-/* The ID selector is needed to beat "#igfc-root input { font: inherit }". */
-#igfc-root .igfc-header-check .igfc-check-input {
-  padding-top: 9px;
-  padding-bottom: 9px;
-  font-size: 12.5px;
-}
-
 .igfc-btn {
   border: 1px solid var(--igfc-border);
   background: var(--igfc-elevated);
@@ -311,16 +298,6 @@
   padding: 12px 20px 8px;
 }
 
-.igfc-notice {
-  margin: 2px 20px 8px;
-  padding: 8px 12px;
-  border: 1px solid #4a3a1a;
-  background: #1a1510;
-  color: #f0cf8a;
-  font-size: 12px;
-  line-height: 1.45;
-}
-
 .igfc-search {
   width: 100%;
   border: 1px solid var(--igfc-border);
@@ -375,83 +352,11 @@
   max-width: 52ch;
 }
 
-.igfc-hero-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: min(360px, 100%);
-  margin: 4px 0 0;
-  color: var(--igfc-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.igfc-hero-divider::before,
-.igfc-hero-divider::after {
-  content: "";
-  flex: 1 1 auto;
-  height: 1px;
-  background: var(--igfc-border);
-}
-
 .igfc-hero-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
-}
-
-.igfc-check {
-  width: min(360px, 100%);
-}
-
-.igfc-check-form {
-  display: flex;
-  gap: 8px;
-  margin: 0;
-}
-
-.igfc-check-field {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--igfc-border);
-  background: var(--igfc-elevated);
-}
-
-.igfc-check-field:focus-within {
-  border-color: #555;
-}
-
-.igfc-check-at {
-  padding: 0 4px 0 12px;
-  color: var(--igfc-muted);
-  font-size: 13px;
-}
-
-.igfc-check-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  border: none;
-  background: transparent;
-  color: var(--igfc-text);
-  padding: 10px 12px 10px 0;
-  font-size: 13px;
-  outline: none;
-}
-
-.igfc-check-hint {
-  margin: 8px 0 0;
-  color: var(--igfc-muted);
-  font-size: 11px;
-  line-height: 1.45;
-  text-align: left;
-}
-
-.igfc-check-hint.igfc-check-hint-error {
-  color: #ffb4b4;
 }
 
 .igfc-hero-btn {
@@ -915,23 +820,6 @@
   #igfc-root .igfc-loader-ring::before {
     animation: none !important;
     transition: none !important;
-  }
-}
-
-/* Narrow windows: the check box gets its own row under the title. */
-@media (max-width: 900px) {
-  .igfc-header {
-    flex-wrap: wrap;
-  }
-
-  .igfc-actions {
-    order: 3;
-    flex: 1 1 100%;
-  }
-
-  .igfc-check-form.igfc-header-check {
-    flex: 1 1 auto;
-    width: auto;
   }
 }
 
